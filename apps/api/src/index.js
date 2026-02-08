@@ -1,18 +1,16 @@
 const express = require("express");
-
 const app = express();
-const PORT = 3001;
 app.use(express.json());
 
+const cors = require("cors");
+app.use(cors());
+
+const PORT = 3001;
 const messages = [];
 let nextMessageId = 1;
 
 app.get("/health", (req, res) => {
   res.json({ ok: true });
-});
-
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
 });
 
 app.post("/messages", (req, res) => {
@@ -59,4 +57,8 @@ app.get("/messages", (req, res) => {
     }
 
     res.json(result);
-})
+});
+
+app.listen(PORT, () => {
+  console.log(`API listening on http://localhost:${PORT}`);
+});
