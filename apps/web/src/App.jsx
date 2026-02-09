@@ -10,12 +10,22 @@ export default function App() {
   const [status, setStatus] = useState("idle");
 
   const lastSeenIdRef = useRef(0);
+  const pollInFlightRef = useRef(false);
+  const pollGenerationRef = useRef(0);
 
   const canSend = useMemo(() => {
-    return threadId.trim().length > 0 && sender.trim().length > 0 && text.trim().length > 0;
+    return (
+      threadId.trim().length > 0 &&
+      sender.trim().length > 0 &&
+      text.trim().length > 0
+    );
   }, [threadId, sender, text]);
 
   async function pollOnce() {
+    if (pollInFlightRef.current) return;
+    pollInFlightRef.current = true;
+
+    const generationAtStart = pollGenerationRef.current;
     const currentThread = threadId.trim();
     if (!currentThread) return;
 
@@ -30,10 +40,16 @@ export default function App() {
       setStatus(`poll error (${res.status})`);
       return;
     }
+    pollInFlightRef.current = false;
 
     const newMessages = await res.json();
+    if (generationAtStart !== pollGenerationRef.current) return;
     if (Array.isArray(newMessages) && newMessages.length > 0) {
-      setMessages((prev) => [...prev, ...newMessages]);
+      setMessages((prev) => {
+        const merged = new Map(prev.map((m) => [m.id, m]));
+        for (const m of newMessages) merged.set(m.id, m);
+        return Array.from(merged.values()).sort((a, b) => a.id - b.id);
+      });
       const maxId = Math.max(...newMessages.map((m) => m.id ?? 0));
       if (maxId > lastSeenIdRef.current) lastSeenIdRef.current = maxId;
     }
@@ -43,6 +59,7 @@ export default function App() {
 
   useEffect(() => {
     // When thread changes, reset local state for clarity
+    pollGenerationRef.current += 1;
     setMessages([]);
     lastSeenIdRef.current = 0;
 
@@ -75,14 +92,14 @@ export default function App() {
     const payload = {
       threadId: threadId.trim(),
       sender: sender.trim(),
-      text: text.trim()
+      text: text.trim(),
     };
 
     setStatus("sending");
     const res = await fetch(`${API_BASE}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
     });
 
     if (!res.ok) {
@@ -100,10 +117,15 @@ export default function App() {
   }
 
   return (
-    <div style={{ maxWidth: 700, margin: "40px auto", fontFamily: "system-ui" }}>
+    <div
+      style={{ maxWidth: 700, margin: "40px auto", fontFamily: "system-ui" }}
+    >
       <h1>Messaging (Polling)</h1>
 
-      <form onSubmit={sendMessage} style={{ display: "grid", gap: 8, marginBottom: 16 }}>
+      <form
+        onSubmit={sendMessage}
+        style={{ display: "grid", gap: 8, marginBottom: 16 }}
+      >
         <label>
           Thread ID
           <input
@@ -144,7 +166,9 @@ export default function App() {
       <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 6 }}>
         <div style={{ fontWeight: 600, marginBottom: 8 }}>Messages</div>
         {messages.length === 0 ? (
-          <div style={{ opacity: 0.7 }}>No messages yet (polling every 5s).</div>
+          <div style={{ opacity: 0.7 }}>
+            No messages yet (polling every 5s).
+          </div>
         ) : (
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {messages.map((m) => (
