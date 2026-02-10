@@ -25,36 +25,42 @@ export default function App() {
     if (pollInFlightRef.current) return;
     pollInFlightRef.current = true;
 
-    const generationAtStart = pollGenerationRef.current;
-    const currentThread = threadId.trim();
-    if (!currentThread) return;
+    try {
+      const generationAtStart = pollGenerationRef.current;
+      const currentThread = threadId.trim();
+      if (!currentThread) return;
 
-    const sinceId = lastSeenIdRef.current;
-    const url = new URL(`${API_BASE}/messages`);
-    url.searchParams.set("threadId", currentThread);
-    if (sinceId > 0) url.searchParams.set("sinceId", String(sinceId));
+      const sinceId = lastSeenIdRef.current;
+      const url = new URL(`${API_BASE}/messages`);
+      url.searchParams.set("threadId", currentThread);
+      if (sinceId >= 0) url.searchParams.set("sinceId", String(sinceId));
 
-    setStatus("polling");
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      setStatus(`poll error (${res.status})`);
-      return;
+      setStatus("polling");
+      const res = await fetch(url.toString());
+      if (!res.ok) {
+        setStatus(`poll error (${res.status})`);
+        return;
+      }
+      pollInFlightRef.current = false;
+
+      const newMessages = await res.json();
+      if (generationAtStart !== pollGenerationRef.current) return;
+      if (Array.isArray(newMessages) && newMessages.length > 0) {
+        setMessages((prev) => {
+          const merged = new Map(prev.map((m) => [m.id, m]));
+          for (const m of newMessages) merged.set(m.id, m);
+          return Array.from(merged.values()).sort((a, b) => a.id - b.id);
+        });
+        const maxId = Math.max(...newMessages.map((m) => m.id ?? 0));
+        if (maxId > lastSeenIdRef.current) lastSeenIdRef.current = maxId;
+      }
+
+      setStatus("idle");
+    } catch (e) {
+      setStatus("poll exception");
+    } finally {
+      pollInFlightRef.current = false;
     }
-    pollInFlightRef.current = false;
-
-    const newMessages = await res.json();
-    if (generationAtStart !== pollGenerationRef.current) return;
-    if (Array.isArray(newMessages) && newMessages.length > 0) {
-      setMessages((prev) => {
-        const merged = new Map(prev.map((m) => [m.id, m]));
-        for (const m of newMessages) merged.set(m.id, m);
-        return Array.from(merged.values()).sort((a, b) => a.id - b.id);
-      });
-      const maxId = Math.max(...newMessages.map((m) => m.id ?? 0));
-      if (maxId > lastSeenIdRef.current) lastSeenIdRef.current = maxId;
-    }
-
-    setStatus("idle");
   }
 
   useEffect(() => {
