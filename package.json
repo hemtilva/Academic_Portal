@@ -1,8 +1,12 @@
 {
   "name": "academic-portal",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
-    "dev:api": "npm --workspace apps/api run dev"
+    "dev:api": "npm --workspace apps/api run dev",
+    "dev:web": "npm --workspace apps/web run dev"
   }
 }
