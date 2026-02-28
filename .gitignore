@@ -8,4 +8,9 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Editor swap files
+*.swp
+*.swo
+*.swx
+
 .env

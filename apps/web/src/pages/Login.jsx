@@ -41,7 +41,7 @@ export default function Login() {
     localStorage.setItem("ap_user", JSON.stringify(data.user));
 
     setStatus("Success");
-    nav("/");
+    nav("/doubts");
   }
 
   return (

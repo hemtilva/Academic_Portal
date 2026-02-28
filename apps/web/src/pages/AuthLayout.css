@@ -1,3 +1,7 @@
+/* Common/base styles from StudentDoubts.css */
+body {
+  background: rgba(255, 255, 255, 0.87);
+}
 @import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap");
 
 .ap-auth {
