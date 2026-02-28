@@ -4,7 +4,8 @@ app.use(express.json());
 const { Pool } = require("pg");
 const cors = require("cors");
 app.use(cors());
-
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
 dotenv.config();
 
@@ -40,7 +41,6 @@ function normalizeEmail(sender) {
     .trim()
     .toLowerCase();
   if (s.includes("@")) return s;
-  // Dev-only convention for demo senders like "student1"
   return `${s}@local.test`;
 }
 
@@ -84,6 +84,29 @@ async function getOrCreateThreadId(threadTitle, studentId) {
 
 testDbConnection();
 
+function requireAuth(req, res, next) {
+  const auth = req.headers.authorization;
+
+  if (typeof auth !== "string" || !auth.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Missing Authorization header" });
+  }
+
+  const token = auth.slice("Bearer ".length);
+
+  try {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ error: "JWT_SECRET not configured" });
+    }
+
+    const payload = jwt.verify(token, secret); // checks signature + exp
+    req.user = payload; // ex: { sub, email, role, iat, exp }
+    return next();
+  } catch {
+    return res.status(401).json({ error: "Invalid or expired token" });
+  }
+}
+
 app.get("/health", async (req, res) => {
   try {
     await pool.query("SELECT 1 AS ok");
@@ -93,7 +116,7 @@ app.get("/health", async (req, res) => {
   }
 });
 
-app.post("/messages", async (req, res) => {
+app.post("/messages", requireAuth, async (req, res) => {
   const { threadId, sender, text } = req.body;
 
   if (!threadId || typeof threadId !== "string") {
@@ -135,7 +158,7 @@ app.post("/messages", async (req, res) => {
   }
 });
 
-app.get("/messages", async (req, res) => {
+app.get("/messages", requireAuth, async (req, res) => {
   const { threadId, sinceId } = req.query;
 
   if (typeof threadId !== "string" || threadId.trim().length === 0) {
@@ -181,4 +204,107 @@ app.get("/messages", async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
+});
+
+function isValidRole(role) {
+  return role == "student" || role == "ta" || role == "professor";
+}
+
+app.post("/auth/signup", async (req, res) => {
+  const { email, password, role } = req.body;
+
+  if (typeof email !== "string" || email.trim().length === 0) {
+    return res.status(400).json({ error: "email is required" });
+  }
+
+  if (typeof password !== "string" || password.length < 8) {
+    return res.status(400).json({ error: "password must be at least 8 chars" });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+  const userRole = (typeof role === "string" ? role : "student").trim();
+
+  if (!isValidRole(userRole)) {
+    return res.status(400).json({ error: "invalid role" });
+  }
+
+  try {
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const inserted = await pool.query(
+      `INSERT INTO users (email, password_hash, role) VALUES ($1, $2, $3) 
+        RETURNING user_id, email, role
+        `,
+      [normalizedEmail, passwordHash, userRole],
+    );
+
+    const user = inserted.rows[0];
+    const token = signToken(user);
+    return res.status(201).json({
+      token,
+      user: { id: user.user_id, email: user.email, role: user.role },
+    });
+  } catch (err) {
+    if (err && err.code === "23505") {
+      return res.status(409).json({ error: "email already exists" });
+    }
+    console.error(err);
+    return res.status(500).json({ error: "signup failed" });
+  }
+});
+
+function signToken(user) {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("JWT_SECRET is missing. Set it in apps/api/.env");
+  }
+
+  return jwt.sign(
+    { sub: user.user_id, email: user.email, role: user.role },
+    secret,
+    { expiresIn: "7d" },
+  );
+}
+
+app.post("/auth/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  if (typeof email !== "string" || email.trim().length === 0) {
+    return res.status(400).json({ error: "email is required" });
+  }
+
+  if (typeof password !== "string" || password.length === 0) {
+    return res.status(400).json({ error: "password is required" });
+  }
+
+  const normalizedEmail = email.trim().toLowerCase();
+
+  try {
+    const found = await pool.query(
+      `SELECT user_id, email, role, password_hash 
+        FROM users WHERE email = $1 LIMIT 1`,
+      [normalizedEmail],
+    );
+
+    if (found.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const user = found.rows[0];
+
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
+
+    const token = signToken(user);
+
+    return res.json({
+      token,
+      user: { id: user.user_id, email: user.email, role: user.role },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "login failed" });
+  }
 });
