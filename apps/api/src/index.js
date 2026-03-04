@@ -106,6 +106,41 @@ function requireAuth(req, res, next) {
     return res.status(401).json({ error: "Invalid or expired token" });
   }
 }
+function isValidRole(role) {
+  return role == "student" || role == "ta" || role == "professor";
+}
+
+function getAuthContext(req, res) {
+  const userId = Number(req.user?.sub);
+  const role = req.user?.role;
+
+  if (!Number.isInteger(userId) || userId <= 0) {
+    res.status(401).json({ error: "Invalid token payload (sub)" });
+    return null;
+  }
+
+  if (typeof role !== "string" || !isValidRole(role)) {
+    res.status(401).json({ error: "Invalid token payload (role)" });
+    return null;
+  }
+
+  return { userId, role };
+}
+
+function requireRole(res, role, allowed) {
+  if (!allowed.includes(role)) {
+    res.status(403).json({ error: "Forbidden" });
+    return false;
+  }
+  return true;
+}
+
+function threadAccessFilter(role) {
+  if (role === "student") return { where: "t.student_id = $1" };
+  if (role === "ta") return { where: "t.ta_id = $1" };
+  if (role === "professor") return { where: "TRUE" };
+  return { where: "FALSE" };
+}
 
 app.get("/health", async (req, res) => {
   try {
@@ -206,10 +241,6 @@ app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
 });
 
-function isValidRole(role) {
-  return role == "student" || role == "ta" || role == "professor";
-}
-
 app.post("/auth/signup", async (req, res) => {
   const { email, password, role } = req.body;
 
@@ -306,5 +337,228 @@ app.post("/auth/login", async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "login failed" });
+  }
+});
+
+app.get("/threads", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+
+  const { where } = threadAccessFilter(auth.role);
+
+  const sql = `
+  SELECT t.thread_id, t.title, t.status, t.student_id, t.ta_id
+  FROM threads t
+  WHERE ${where}
+  ORDER BY t.thread_id DESC
+  LIMIT 100`;
+  const params = where === "TRUE" ? [] : [auth.userId];
+  const result = await pool.query(sql, params);
+
+  return res.json({
+    threads: result.rows.map((r) => ({
+      threadId: r.thread_id,
+      title: r.title,
+      status: r.status,
+      studentId: r.student_id,
+      taId: r.ta_id,
+    })),
+  });
+});
+
+app.post("/threads", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+  if (!requireRole(res, auth.role, ["student"])) return;
+
+  const { title } = req.body;
+  if (typeof title !== "string" || title.trim().length === 0) {
+    return res.status(400).json({ error: "title is required" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Prevent two concurrent creates from choosing the same next TA.
+    await client.query("SELECT pg_advisory_xact_lock(424242)");
+
+    const tas = await client.query(
+      "SELECT user_id FROM users WHERE role = 'ta' ORDER BY user_id ASC",
+    );
+    if (tas.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(503).json({ error: "No TA available" });
+    }
+
+    const lastAssigned = await client.query(
+      "SELECT ta_id FROM threads WHERE ta_id IS NOT NULL ORDER BY thread_id DESC LIMIT 1",
+    );
+    const lastTaId = lastAssigned.rows[0]?.ta_id ?? null;
+
+    let nextTaId = tas.rows[0].user_id;
+    if (lastTaId != null) {
+      const next = tas.rows.find((r) => r.user_id > lastTaId);
+      nextTaId = next ? next.user_id : tas.rows[0].user_id; // wrap-around
+    }
+
+    const inserted = await client.query(
+      `INSERT INTO threads (student_id, ta_id, title)
+       VALUES ($1, $2, $3)
+       RETURNING thread_id, title, status, student_id, ta_id`,
+      [auth.userId, nextTaId, title.trim()],
+    );
+
+    await client.query("COMMIT");
+
+    const t = inserted.rows[0];
+    return res.status(201).json({
+      thread: {
+        threadId: t.thread_id,
+        title: t.title,
+        status: t.status,
+        studentId: t.student_id,
+        taId: t.ta_id,
+      },
+    });
+  } catch (err) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      // ignore rollback errors
+    }
+    console.error(err);
+    return res.status(500).json({ error: "Failed to create thread" });
+  } finally {
+    client.release();
+  }
+});
+
+app.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+
+  const threadId = Number(req.params.threadId);
+  if (!Number.isInteger(threadId) || threadId <= 0) {
+    return res
+      .status(400)
+      .json({ error: "threadId must be a positive integer" });
+  }
+
+  const sinceRaw = req.query.sinceId;
+  const sinceNum =
+    typeof sinceRaw === "string" && sinceRaw.trim().length > 0
+      ? Number(sinceRaw)
+      : 0;
+  const sinceId = Number.isFinite(sinceNum) && sinceNum > 0 ? sinceNum : 0;
+
+  try {
+    const threadResult = await pool.query(
+      "SELECT thread_id, student_id, ta_id FROM threads WHERE thread_id = $1 LIMIT 1",
+      [threadId],
+    );
+
+    if (threadResult.rows.length === 0) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    const thread = threadResult.rows[0];
+    const allowed =
+      auth.role === "professor" ||
+      (auth.role === "student" && thread.student_id === auth.userId) ||
+      (auth.role === "ta" && thread.ta_id === auth.userId);
+
+    if (!allowed) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const result = await pool.query(
+      `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, u.email
+       FROM messages m
+       JOIN users u ON u.user_id = m.sender_id
+       WHERE m.thread_id = $1 AND m.message_id > $2
+       ORDER BY m.message_id ASC
+       LIMIT 500`,
+      [threadId, sinceId],
+    );
+
+    return res.json({
+      messages: result.rows.map((r) => ({
+        messageId: r.message_id,
+        threadId: r.thread_id,
+        senderId: r.sender_id,
+        senderEmail: r.email,
+        content: r.content,
+        createdAt: r.created_at,
+      })),
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to fetch thread messages" });
+  }
+});
+
+app.post("/threads/:threadId/messages", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+
+  const threadId = Number(req.params.threadId);
+  if (!Number.isInteger(threadId) || threadId <= 0) {
+    return res
+      .status(400)
+      .json({ error: "threadId must be a positive integer" });
+  }
+
+  const raw =
+    typeof req.body?.content === "string"
+      ? req.body.content
+      : typeof req.body?.text === "string"
+        ? req.body.text
+        : "";
+  const content = String(raw).trim();
+  if (content.length === 0) {
+    return res.status(400).json({ error: "content is required" });
+  }
+
+  try {
+    const threadResult = await pool.query(
+      "SELECT thread_id, student_id, ta_id FROM threads WHERE thread_id = $1 LIMIT 1",
+      [threadId],
+    );
+
+    if (threadResult.rows.length === 0) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    const thread = threadResult.rows[0];
+    const allowed =
+      auth.role === "professor" ||
+      (auth.role === "student" && thread.student_id === auth.userId) ||
+      (auth.role === "ta" && thread.ta_id === auth.userId);
+
+    if (!allowed) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    const inserted = await pool.query(
+      `INSERT INTO messages (thread_id, sender_id, content)
+       VALUES ($1, $2, $3)
+       RETURNING message_id, thread_id, sender_id, content, created_at`,
+      [threadId, auth.userId, content],
+    );
+
+    const m = inserted.rows[0];
+    return res.status(201).json({
+      message: {
+        messageId: m.message_id,
+        threadId: m.thread_id,
+        senderId: m.sender_id,
+        content: m.content,
+        createdAt: m.created_at,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to post thread message" });
   }
 });
