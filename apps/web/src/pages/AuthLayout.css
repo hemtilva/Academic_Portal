@@ -84,6 +84,68 @@ body {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
+.ap-auth__roleGroup {
+  width: min(320px, 70%);
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.ap-auth__roleOption {
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: none;
+  background: #0b0b0b;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 400;
+  opacity: 0.55;
+}
+
+.ap-auth__roleOption:hover {
+  opacity: 0.75;
+}
+
+.ap-auth__roleOption.is-active {
+  opacity: 1;
+  font-weight: 600;
+}
+
+.ap-auth__roleOption.is-active:hover {
+  opacity: 1;
+}
+
+.ap-auth__roleOption:focus,
+.ap-auth__roleOption:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.ap-auth__select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  cursor: pointer;
+  padding-right: 42px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.65) 50%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.65) 50%, transparent 50%);
+  background-position:
+    calc(100% - 22px) calc(50% - 2px),
+    calc(100% - 16px) calc(50% - 2px);
+  background-size:
+    6px 6px,
+    6px 6px;
+  background-repeat: no-repeat;
+}
+
+.ap-auth__select option {
+  background: #0b0b0b;
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .ap-auth__divider {
   width: min(320px, 70%);
   height: 1px;

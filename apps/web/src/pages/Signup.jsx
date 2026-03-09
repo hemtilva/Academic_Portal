@@ -9,6 +9,7 @@ export default function Signup() {
   const nav = useNavigate();
 
   const [email, setEmail] = useState("");
+  const [role, setRole] = useState("student");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [status, setStatus] = useState("");
@@ -39,7 +40,7 @@ export default function Signup() {
     const res = await fetch(`${API_BASE}/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role: "student" }),
+      body: JSON.stringify({ email, password, role }),
     });
 
     const data = await res.json().catch(() => ({}));
@@ -95,6 +96,37 @@ export default function Signup() {
               placeholder="confirm password..."
               autoComplete="new-password"
             />
+
+            <div
+              className="ap-auth__roleGroup"
+              role="radiogroup"
+              aria-label="Role"
+            >
+              <button
+                type="button"
+                className={`ap-auth__roleOption ${role === "student" ? "is-active" : ""}`}
+                aria-pressed={role === "student"}
+                onClick={() => setRole("student")}
+              >
+                Student
+              </button>
+              <button
+                type="button"
+                className={`ap-auth__roleOption ${role === "ta" ? "is-active" : ""}`}
+                aria-pressed={role === "ta"}
+                onClick={() => setRole("ta")}
+              >
+                TA
+              </button>
+              <button
+                type="button"
+                className={`ap-auth__roleOption ${role === "professor" ? "is-active" : ""}`}
+                aria-pressed={role === "professor"}
+                onClick={() => setRole("professor")}
+              >
+                Professor
+              </button>
+            </div>
 
             <div className="ap-auth__divider" />
 

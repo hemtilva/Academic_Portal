@@ -151,6 +151,9 @@ app.get("/health", async (req, res) => {
   }
 });
 
+/*
+OLD TEST CODE
+
 app.post("/messages", requireAuth, async (req, res) => {
   const { threadId, sender, text } = req.body;
 
@@ -236,6 +239,7 @@ app.get("/messages", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch messages" });
   }
 });
+*/
 
 app.listen(PORT, () => {
   console.log(`API listening on http://localhost:${PORT}`);
