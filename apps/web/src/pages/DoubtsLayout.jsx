@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import "./StudentDoubts.css";
@@ -69,17 +69,19 @@ export default function DoubtsLayout() {
             <div style={{ padding: 12 }}>{threadsError}</div>
           ) : (
             threads.map((t) => (
-              <Link
+              <NavLink
                 key={t.threadId}
                 to={`/doubts/${t.threadId}`}
-                className="sd-doubtItem"
+                className={({ isActive }) =>
+                  `sd-doubtItem${isActive ? " is-active" : ""}`
+                }
                 style={{ textDecoration: "none", color: "inherit" }}
               >
                 <span>{t.title}</span>
                 <div
                   className={`sd-status ${t.status === "closed" ? "resolved" : "unresolved"}`}
                 />
-              </Link>
+              </NavLink>
             ))
           )}
         </div>

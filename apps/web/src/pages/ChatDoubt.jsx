@@ -17,6 +17,17 @@ export default function ChatDoubt() {
   const canToggleSolved = user?.role === "student";
   const canReply = !isClosed || user?.role === "student";
 
+  const leftTitleLabel = useMemo(() => {
+    if (!user) return "";
+    if (user.role === "student") {
+      return thread?.taEmail ? `${thread.taEmail}` : "TA";
+    }
+    if (user.role === "ta" || user.role === "professor") {
+      return thread?.studentEmail ? `${thread.studentEmail}` : "Student";
+    }
+    return "";
+  }, [user, thread?.taEmail, thread?.studentEmail]);
+
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -196,20 +207,22 @@ export default function ChatDoubt() {
   return (
     <>
       <div className="cd-titlebar">
-        <div className="cd-titlebar__spacer" />
+        <div className="cd-titlebar__left" title={leftTitleLabel}>
+          {leftTitleLabel}
+        </div>
         <div className="cd-titlebar__title">{title}</div>
-        {canToggleSolved ? (
-          <button
-            type="button"
-            className={`cd-titlebar__action ${isClosed ? "is-closed" : "is-open"}`}
-            onClick={toggleSolved}
-            disabled={toggling}
-          >
-            {isClosed ? "Solved" : "Unsolved"}
-          </button>
-        ) : (
-          <div className="cd-titlebar__spacer" />
-        )}
+        <div className="cd-titlebar__right">
+          {canToggleSolved ? (
+            <button
+              type="button"
+              className={`cd-titlebar__action ${isClosed ? "is-closed" : "is-open"}`}
+              onClick={toggleSolved}
+              disabled={toggling}
+            >
+              {isClosed ? "Solved" : "Unsolved"}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {error ? (

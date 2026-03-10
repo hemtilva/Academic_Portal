@@ -130,6 +130,14 @@ body {
   background: #1a1a1a;
 }
 
+.sd-doubtItem.is-active {
+  background: #1b1b1b;
+}
+
+.sd-doubtItem.is-active:hover {
+  background: #1b1b1b;
+}
+
 /* STATUS DOT */
 .sd-status {
   width: 10px;
@@ -225,9 +233,9 @@ body {
   width: 100%;
   background: #0f0f0f;
   color: #fff;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   height: 36px;
   font-weight: 600;
   font-size: 1.15rem;
@@ -237,13 +245,23 @@ body {
   box-sizing: border-box;
 }
 
-.cd-titlebar__spacer {
-  width: 90px;
-  flex: 0 0 auto;
+.cd-titlebar__left {
+  justify-self: start;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 0.9rem;
+  opacity: 0.95;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cd-titlebar__right {
+  justify-self: end;
+  min-width: 0;
 }
 
 .cd-titlebar__title {
-  flex: 1 1 auto;
   text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;

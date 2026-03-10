@@ -351,11 +351,15 @@ app.get("/threads", requireAuth, async (req, res) => {
   const { where } = threadAccessFilter(auth.role);
 
   const sql = `
-  SELECT t.thread_id, t.title, t.status, t.student_id, t.ta_id
-  FROM threads t
-  WHERE ${where}
-  ORDER BY t.thread_id DESC
-  LIMIT 100`;
+    SELECT t.thread_id, t.title, t.status, t.student_id, t.ta_id,
+      s.email AS student_email,
+      ta.email AS ta_email
+    FROM threads t
+    JOIN users s ON s.user_id = t.student_id
+    LEFT JOIN users ta ON ta.user_id = t.ta_id
+    WHERE ${where}
+    ORDER BY t.thread_id DESC
+    LIMIT 100`;
   const params = where === "TRUE" ? [] : [auth.userId];
   const result = await pool.query(sql, params);
 
@@ -366,6 +370,8 @@ app.get("/threads", requireAuth, async (req, res) => {
       status: r.status,
       studentId: r.student_id,
       taId: r.ta_id,
+      studentEmail: r.student_email,
+      taEmail: r.ta_email,
     })),
   });
 });
