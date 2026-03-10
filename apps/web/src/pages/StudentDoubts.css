@@ -63,11 +63,45 @@ body {
 .sd-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: flex-start;
   padding: 20px;
   font-weight: 500;
   font-size: 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sd-headerLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sd-composeBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: none;
+  background: #2a2a2a;
+  color: #6c7cf3;
+  font-size: 22px;
+  line-height: 36px;
+  padding: 0;
+  text-align: center;
+  cursor: pointer;
+  display: block;
+  flex: 0 0 auto;
+}
+
+.sd-composeBtn:hover {
+  background: #1a1a1a;
+}
+
+.sd-composeBar {
+  padding: 14px 20px;
+  display: flex;
+  justify-content: flex-start;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .sd-avatar {
@@ -114,7 +148,7 @@ body {
 /* CHAT AREA */
 .sd-chatArea {
   flex: 1 1 0;
-  background: #f3e6cc;
+  background: #1b1b1b;
   min-height: 100vh;
   max-height: 100vh;
   overflow-y: auto;
@@ -144,39 +178,38 @@ body {
 
 .chat-bubble.user {
   align-self: flex-end;
-  background: #d37f0a;
+  background: #ac700f;
   color: #fff;
   border-bottom-right-radius: 4px;
 }
 
 .chat-bubble.bot {
   align-self: flex-start;
-  background: beige;
-  color: #222;
+  background: rgb(34, 34, 34);
+  color: #fff;
   border-bottom-left-radius: 4px;
 }
 
 .chat-input-area {
   display: flex;
   padding: 12px;
-  border-top: 1px solid #e0e0e0;
-  background: #fff;
+  background: #161616;
+  border: none;
 }
 
 .chat-input-area input {
   flex: 1;
   padding: 8px 12px;
-  border-radius: 6px;
-  border: 1px solid #ccc;
+  border-radius: 20px;
   font-size: 1rem;
   margin-right: 8px;
 }
 
 .chat-input-area button {
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: 20px;
   border: none;
-  background: #946103;
+  background: #ac700f;
   color: #fff;
   font-weight: 500;
   cursor: pointer;

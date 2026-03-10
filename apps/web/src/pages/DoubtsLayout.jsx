@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import "./StudentDoubts.css";
 
@@ -9,6 +9,22 @@ export default function DoubtsLayout() {
   const [threads, setThreads] = useState([]);
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [threadsError, setThreadsError] = useState("");
+
+  async function reloadThreads() {
+    try {
+      setLoadingThreads(true);
+      setThreadsError("");
+      const data = await apiFetch("/threads");
+      setThreads(data.threads || []);
+    } catch (e) {
+      setThreadsError(e.message || "Failed to load threads");
+      if ((e.message || "").toLowerCase().includes("unauthorized")) {
+        nav("/login", { replace: true });
+      }
+    } finally {
+      setLoadingThreads(false);
+    }
+  }
 
   useEffect(() => {
     const token = localStorage.getItem("ap_token");
@@ -20,21 +36,7 @@ export default function DoubtsLayout() {
     const storedUser = localStorage.getItem("ap_user");
     if (storedUser) setUser(JSON.parse(storedUser));
 
-    (async () => {
-      try {
-        setLoadingThreads(true);
-        setThreadsError("");
-        const data = await apiFetch("/threads");
-        setThreads(data.threads || []);
-      } catch (e) {
-        setThreadsError(e.message || "Failed to load threads");
-        if ((e.message || "").toLowerCase().includes("unauthorized")) {
-          nav("/login", { replace: true });
-        }
-      } finally {
-        setLoadingThreads(false);
-      }
-    })();
+    reloadThreads();
   }, [nav]);
 
   function logout(e) {
@@ -48,8 +50,10 @@ export default function DoubtsLayout() {
     <div className="sd-container">
       <div className="sd-sidebar">
         <div className="sd-header">
-          <div className="sd-avatar" />
-          <span>{user?.email || "Student-1"}</span>
+          <div className="sd-headerLeft">
+            <div className="sd-avatar" />
+            <span>{user?.email || "Student-1"}</span>
+          </div>
         </div>
 
         <div className="sd-nav">
@@ -79,10 +83,24 @@ export default function DoubtsLayout() {
             ))
           )}
         </div>
+
+        {user?.role === "student" ? (
+          <div className="sd-composeBar">
+            <button
+              type="button"
+              className="sd-composeBtn"
+              onClick={() => nav("/doubts")}
+              aria-label="Post a new doubt"
+              title="Post a new doubt"
+            >
+              +
+            </button>
+          </div>
+        ) : null}
       </div>
 
       <div className="sd-chatArea">
-        <Outlet context={{ threads, user }} />
+        <Outlet context={{ threads, user, reloadThreads }} />
       </div>
     </div>
   );
