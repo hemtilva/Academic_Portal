@@ -438,6 +438,61 @@ app.post("/threads", requireAuth, async (req, res) => {
   }
 });
 
+app.patch("/threads/:threadId/status", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+  if (!requireRole(res, auth.role, ["student"])) return;
+
+  const threadId = Number(req.params.threadId);
+  if (!Number.isInteger(threadId) || threadId <= 0) {
+    return res
+      .status(400)
+      .json({ error: "threadId must be a positive integer" });
+  }
+
+  const rawStatus =
+    typeof req.body?.status === "string"
+      ? req.body.status
+      : typeof req.body?.solved === "boolean"
+        ? req.body.solved
+          ? "closed"
+          : "open"
+        : "";
+
+  const status = String(rawStatus).trim().toLowerCase();
+  if (status !== "open" && status !== "closed") {
+    return res.status(400).json({ error: "status must be 'open' or 'closed'" });
+  }
+
+  try {
+    const updated = await pool.query(
+      `UPDATE threads
+       SET status = $2
+       WHERE thread_id = $1 AND student_id = $3
+       RETURNING thread_id, title, status, student_id, ta_id`,
+      [threadId, status, auth.userId],
+    );
+
+    if (updated.rows.length === 0) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    const t = updated.rows[0];
+    return res.json({
+      thread: {
+        threadId: t.thread_id,
+        title: t.title,
+        status: t.status,
+        studentId: t.student_id,
+        taId: t.ta_id,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to update thread status" });
+  }
+});
+
 app.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
   const auth = getAuthContext(req, res);
   if (!auth) return;
@@ -526,7 +581,7 @@ app.post("/threads/:threadId/messages", requireAuth, async (req, res) => {
 
   try {
     const threadResult = await pool.query(
-      "SELECT thread_id, student_id, ta_id FROM threads WHERE thread_id = $1 LIMIT 1",
+      "SELECT thread_id, student_id, ta_id, status FROM threads WHERE thread_id = $1 LIMIT 1",
       [threadId],
     );
 
@@ -542,6 +597,10 @@ app.post("/threads/:threadId/messages", requireAuth, async (req, res) => {
 
     if (!allowed) {
       return res.status(403).json({ error: "Forbidden" });
+    }
+
+    if (thread.status === "closed" && auth.role !== "student") {
+      return res.status(403).json({ error: "Thread is closed" });
     }
 
     const inserted = await pool.query(

@@ -5,7 +5,7 @@ import { apiFetch } from "../lib/api";
 export default function ChatDoubt() {
   const nav = useNavigate();
   const { id } = useParams();
-  const { threads, user } = useOutletContext();
+  const { threads, user, reloadThreads } = useOutletContext();
 
   const thread = useMemo(
     () => threads?.find((t) => String(t.threadId) === String(id)),
@@ -13,13 +13,43 @@ export default function ChatDoubt() {
   );
 
   const title = thread?.title || "Doubt";
+  const isClosed = thread?.status === "closed";
+  const canToggleSolved = user?.role === "student";
+  const canReply = !isClosed || user?.role === "student";
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [input, setInput] = useState("");
   const [loaded, setLoaded] = useState(false);
+  const [toggling, setToggling] = useState(false);
   const lastSeenIdRef = useRef(0);
+
+  async function toggleSolved() {
+    if (!id || !canToggleSolved) return;
+    try {
+      setToggling(true);
+      setError("");
+
+      const nextStatus = isClosed ? "open" : "closed";
+      await apiFetch(`/threads/${id}/status`, {
+        method: "PATCH",
+        body: { status: nextStatus },
+      });
+
+      if (typeof reloadThreads === "function") {
+        await reloadThreads();
+      }
+    } catch (e) {
+      const msg = e?.message || "Failed to update status";
+      setError(msg);
+      if (String(msg).toLowerCase().includes("unauthorized")) {
+        nav("/login", { replace: true });
+      }
+    } finally {
+      setToggling(false);
+    }
+  }
 
   async function fetchNewMessages() {
     if (!id) return;
@@ -165,22 +195,21 @@ export default function ChatDoubt() {
 
   return (
     <>
-      <div
-        style={{
-          width: "100%",
-          background: "#0f0f0f",
-          color: "#fff",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "36px",
-          fontWeight: 600,
-          fontSize: "1.15rem",
-          marginBottom: "12px",
-          borderRadius: "0",
-        }}
-      >
-        {title}
+      <div className="cd-titlebar">
+        <div className="cd-titlebar__spacer" />
+        <div className="cd-titlebar__title">{title}</div>
+        {canToggleSolved ? (
+          <button
+            type="button"
+            className={`cd-titlebar__action ${isClosed ? "is-closed" : "is-open"}`}
+            onClick={toggleSolved}
+            disabled={toggling}
+          >
+            {isClosed ? "Solved" : "Unsolved"}
+          </button>
+        ) : (
+          <div className="cd-titlebar__spacer" />
+        )}
       </div>
 
       {error ? (
@@ -194,7 +223,13 @@ export default function ChatDoubt() {
           <div style={{ padding: 12 }}>No messages yet.</div>
         ) : (
           messages.map((msg) => {
-            const isUser = Number(msg.senderId) === Number(user?.id);
+            const senderId = Number(msg.senderId);
+            const viewerId = Number(user?.id);
+            const taId = Number(thread?.taId);
+            const isUser =
+              user?.role === "professor"
+                ? senderId === taId || senderId === viewerId
+                : senderId === viewerId;
             return (
               <div
                 key={msg.messageId}
@@ -213,12 +248,15 @@ export default function ChatDoubt() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
+          placeholder={
+            canReply ? "Type your message..." : "This doubt is solved"
+          }
+          disabled={!canReply}
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleSend();
+            if (e.key === "Enter" && canReply) handleSend();
           }}
         />
-        <button onClick={handleSend} disabled={loading}>
+        <button onClick={handleSend} disabled={loading || !canReply}>
           Send
         </button>
       </div>
