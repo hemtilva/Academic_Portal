@@ -3,7 +3,7 @@ const app = express();
 app.use(express.json());
 const { Pool } = require("pg");
 const cors = require("cors");
-app.use(cors());
+app.use(cors({ origin: "http://localhost:5177" }));
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
