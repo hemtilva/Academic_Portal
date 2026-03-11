@@ -34,6 +34,7 @@ export default function ChatDoubt() {
   const [input, setInput] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [toggling, setToggling] = useState(false);
+  const [escalating, setEscalating] = useState(false);
   const lastSeenIdRef = useRef(0);
 
   async function toggleSolved() {
@@ -59,6 +60,32 @@ export default function ChatDoubt() {
       }
     } finally {
       setToggling(false);
+    }
+  }
+
+  async function escalateToProfessor() {
+    if (!id || user?.role !== "student") return;
+    if (thread?.isEscalatedToProfessor) return;
+
+    try {
+      setEscalating(true);
+      setError("");
+
+      await apiFetch(`/threads/${id}/escalate`, {
+        method: "PATCH",
+      });
+
+      if (typeof reloadThreads === "function") {
+        await reloadThreads();
+      }
+    } catch (e) {
+      const msg = e?.message || "Failed to escalate";
+      setError(msg);
+      if (String(msg).toLowerCase().includes("unauthorized")) {
+        nav("/login", { replace: true });
+      }
+    } finally {
+      setEscalating(false);
     }
   }
 
@@ -213,14 +240,29 @@ export default function ChatDoubt() {
         <div className="cd-titlebar__title">{title}</div>
         <div className="cd-titlebar__right">
           {canToggleSolved ? (
-            <button
-              type="button"
-              className={`cd-titlebar__action ${isClosed ? "is-closed" : "is-open"}`}
-              onClick={toggleSolved}
-              disabled={toggling}
-            >
-              {isClosed ? "Solved" : "Unsolved"}
-            </button>
+            <>
+              <button
+                type="button"
+                className={`cd-titlebar__action ${isClosed ? "is-closed" : "is-open"}`}
+                onClick={toggleSolved}
+                disabled={toggling}
+              >
+                {isClosed ? "Solved" : "Unsolved"}
+              </button>
+              <button
+                type="button"
+                className="cd-titlebar__action"
+                onClick={escalateToProfessor}
+                disabled={escalating || !!thread?.isEscalatedToProfessor}
+                title={
+                  thread?.isEscalatedToProfessor
+                    ? "Already escalated"
+                    : "Escalate this doubt to the professor"
+                }
+              >
+                {thread?.isEscalatedToProfessor ? "Escalated" : "Escalate"}
+              </button>
+            </>
           ) : null}
         </div>
       </div>

@@ -36,6 +36,19 @@ async function testDbConnection() {
   }
 }
 
+async function ensureEscalationColumns() {
+  try {
+    await pool.query(
+      "ALTER TABLE threads ADD COLUMN IF NOT EXISTS is_escalated_to_professor BOOLEAN NOT NULL DEFAULT FALSE",
+    );
+    await pool.query(
+      "ALTER TABLE threads ADD COLUMN IF NOT EXISTS escalated_at TIMESTAMPTZ",
+    );
+  } catch (err) {
+    console.error("Failed to ensure escalation columns:", err);
+  }
+}
+
 function normalizeEmail(sender) {
   const s = String(sender || "")
     .trim()
@@ -83,6 +96,7 @@ async function getOrCreateThreadId(threadTitle, studentId) {
 }
 
 testDbConnection();
+ensureEscalationColumns();
 
 function requireAuth(req, res, next) {
   const auth = req.headers.authorization;
@@ -137,8 +151,13 @@ function requireRole(res, role, allowed) {
 
 function threadAccessFilter(role) {
   if (role === "student") return { where: "t.student_id = $1" };
-  if (role === "ta") return { where: "t.ta_id = $1" };
-  if (role === "professor") return { where: "TRUE" };
+  if (role === "ta")
+    return {
+      where:
+        "t.ta_id = $1 AND COALESCE(t.is_escalated_to_professor, FALSE) = FALSE",
+    };
+  if (role === "professor")
+    return { where: "COALESCE(t.is_escalated_to_professor, FALSE) = TRUE" };
   return { where: "FALSE" };
 }
 
@@ -352,6 +371,8 @@ app.get("/threads", requireAuth, async (req, res) => {
 
   const sql = `
     SELECT t.thread_id, t.title, t.status, t.student_id, t.ta_id,
+      COALESCE(t.is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
+      t.escalated_at,
       s.email AS student_email,
       ta.email AS ta_email
     FROM threads t
@@ -360,7 +381,7 @@ app.get("/threads", requireAuth, async (req, res) => {
     WHERE ${where}
     ORDER BY t.thread_id DESC
     LIMIT 100`;
-  const params = where === "TRUE" ? [] : [auth.userId];
+  const params = String(where).includes("$1") ? [auth.userId] : [];
   const result = await pool.query(sql, params);
 
   return res.json({
@@ -370,10 +391,58 @@ app.get("/threads", requireAuth, async (req, res) => {
       status: r.status,
       studentId: r.student_id,
       taId: r.ta_id,
+      isEscalatedToProfessor: r.is_escalated_to_professor,
+      escalatedAt: r.escalated_at,
       studentEmail: r.student_email,
       taEmail: r.ta_email,
     })),
   });
+});
+
+app.patch("/threads/:threadId/escalate", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+  if (!requireRole(res, auth.role, ["student"])) return;
+
+  const threadId = Number(req.params.threadId);
+  if (!Number.isInteger(threadId) || threadId <= 0) {
+    return res
+      .status(400)
+      .json({ error: "threadId must be a positive integer" });
+  }
+
+  try {
+    const updated = await pool.query(
+      `UPDATE threads
+       SET is_escalated_to_professor = TRUE,
+           escalated_at = COALESCE(escalated_at, NOW())
+       WHERE thread_id = $1 AND student_id = $2
+       RETURNING thread_id, title, status, student_id, ta_id,
+                 COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
+                 escalated_at`,
+      [threadId, auth.userId],
+    );
+
+    if (updated.rows.length === 0) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    const t = updated.rows[0];
+    return res.json({
+      thread: {
+        threadId: t.thread_id,
+        title: t.title,
+        status: t.status,
+        studentId: t.student_id,
+        taId: t.ta_id,
+        isEscalatedToProfessor: t.is_escalated_to_professor,
+        escalatedAt: t.escalated_at,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to escalate thread" });
+  }
 });
 
 app.post("/threads", requireAuth, async (req, res) => {
@@ -519,7 +588,7 @@ app.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
 
   try {
     const threadResult = await pool.query(
-      "SELECT thread_id, student_id, ta_id FROM threads WHERE thread_id = $1 LIMIT 1",
+      "SELECT thread_id, student_id, ta_id, COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor FROM threads WHERE thread_id = $1 LIMIT 1",
       [threadId],
     );
 
@@ -529,9 +598,11 @@ app.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
 
     const thread = threadResult.rows[0];
     const allowed =
-      auth.role === "professor" ||
       (auth.role === "student" && thread.student_id === auth.userId) ||
-      (auth.role === "ta" && thread.ta_id === auth.userId);
+      (auth.role === "ta" &&
+        thread.ta_id === auth.userId &&
+        thread.is_escalated_to_professor !== true) ||
+      (auth.role === "professor" && thread.is_escalated_to_professor === true);
 
     if (!allowed) {
       return res.status(403).json({ error: "Forbidden" });
@@ -587,7 +658,7 @@ app.post("/threads/:threadId/messages", requireAuth, async (req, res) => {
 
   try {
     const threadResult = await pool.query(
-      "SELECT thread_id, student_id, ta_id, status FROM threads WHERE thread_id = $1 LIMIT 1",
+      "SELECT thread_id, student_id, ta_id, status, COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor FROM threads WHERE thread_id = $1 LIMIT 1",
       [threadId],
     );
 
@@ -597,9 +668,11 @@ app.post("/threads/:threadId/messages", requireAuth, async (req, res) => {
 
     const thread = threadResult.rows[0];
     const allowed =
-      auth.role === "professor" ||
       (auth.role === "student" && thread.student_id === auth.userId) ||
-      (auth.role === "ta" && thread.ta_id === auth.userId);
+      (auth.role === "ta" &&
+        thread.ta_id === auth.userId &&
+        thread.is_escalated_to_professor !== true) ||
+      (auth.role === "professor" && thread.is_escalated_to_professor === true);
 
     if (!allowed) {
       return res.status(403).json({ error: "Forbidden" });

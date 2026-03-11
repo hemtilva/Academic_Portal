@@ -10,8 +10,17 @@ CREATE TABLE IF NOT EXISTS threads (
   status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'closed')),
   student_id  INTEGER NOT NULL REFERENCES users(user_id),
   ta_id       INTEGER REFERENCES users(user_id),
-  title       TEXT NOT NULL
+  title       TEXT NOT NULL,
+  is_escalated_to_professor BOOLEAN NOT NULL DEFAULT FALSE,
+  escalated_at TIMESTAMPTZ
 );
+
+-- Backfill/upgrade for existing databases
+ALTER TABLE threads
+  ADD COLUMN IF NOT EXISTS is_escalated_to_professor BOOLEAN NOT NULL DEFAULT FALSE;
+
+ALTER TABLE threads
+  ADD COLUMN IF NOT EXISTS escalated_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS messages (
   message_id  SERIAL PRIMARY KEY,
