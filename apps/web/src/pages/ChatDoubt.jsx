@@ -15,7 +15,20 @@ export default function ChatDoubt() {
   const title = thread?.title || "Doubt";
   const isClosed = thread?.status === "closed";
   const canToggleSolved = user?.role === "student";
-  const canReply = !isClosed || user?.role === "student";
+  const canReply = useMemo(() => {
+    if (!user) return false;
+    if (user.role === "student") return true;
+    if (isClosed) return false;
+    if (user.role === "professor") return !!thread?.isEscalatedToProfessor;
+    return true; // ta (and any other non-student roles) can reply to open threads
+  }, [user, isClosed, thread?.isEscalatedToProfessor]);
+
+  const replyPlaceholder = useMemo(() => {
+    if (canReply) return "Type your message...";
+    if (isClosed) return "This doubt is solved";
+    if (user?.role === "professor") return "View only (not escalated)";
+    return "You cannot reply";
+  }, [canReply, isClosed, user?.role]);
 
   const leftTitleLabel = useMemo(() => {
     if (!user) return "";
@@ -35,20 +48,24 @@ export default function ChatDoubt() {
   const [loaded, setLoaded] = useState(false);
   const [toggling, setToggling] = useState(false);
   const [escalating, setEscalating] = useState(false);
+  const [showSolvedConfirm, setShowSolvedConfirm] = useState(false);
+  const [showEscalateConfirm, setShowEscalateConfirm] = useState(false);
   const lastSeenIdRef = useRef(0);
 
-  async function toggleSolved() {
+  function toggleSolved() {
     if (!id || !canToggleSolved) return;
+    setShowSolvedConfirm(true);
+  }
+  async function confirmToggleSolved() {
     try {
       setToggling(true);
       setError("");
-
+      setShowSolvedConfirm(false);
       const nextStatus = isClosed ? "open" : "closed";
       await apiFetch(`/threads/${id}/status`, {
         method: "PATCH",
         body: { status: nextStatus },
       });
-
       if (typeof reloadThreads === "function") {
         await reloadThreads();
       }
@@ -62,19 +79,23 @@ export default function ChatDoubt() {
       setToggling(false);
     }
   }
+  function cancelToggleSolved() {
+    setShowSolvedConfirm(false);
+  }
 
-  async function escalateToProfessor() {
+  function escalateToProfessor() {
     if (!id || user?.role !== "student") return;
     if (thread?.isEscalatedToProfessor) return;
-
+    setShowEscalateConfirm(true);
+  }
+  async function confirmEscalateToProfessor() {
     try {
       setEscalating(true);
       setError("");
-
+      setShowEscalateConfirm(false);
       await apiFetch(`/threads/${id}/escalate`, {
         method: "PATCH",
       });
-
       if (typeof reloadThreads === "function") {
         await reloadThreads();
       }
@@ -87,6 +108,9 @@ export default function ChatDoubt() {
     } finally {
       setEscalating(false);
     }
+  }
+  function cancelEscalateToProfessor() {
+    setShowEscalateConfirm(false);
   }
 
   async function fetchNewMessages() {
@@ -192,6 +216,7 @@ export default function ChatDoubt() {
 
   // send new messages
   async function handleSend() {
+    if (!canReply) return;
     const content = input.trim();
     if (!content) return;
 
@@ -249,6 +274,65 @@ export default function ChatDoubt() {
               >
                 {isClosed ? "Solved" : "Unsolved"}
               </button>
+              {showSolvedConfirm && (
+                <div style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100vw',
+                  height: '100vh',
+                  background: 'rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000,
+                }}>
+                  <div style={{
+                    background: '#f5e9da',
+                    padding: '2rem',
+                    borderRadius: 12,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                    minWidth: 320,
+                    textAlign: 'center',
+                    color: '#222',
+                    border: '1px solid #e2cdbb',
+                  }}>
+                    <div style={{ fontWeight: 700, marginBottom: 18, color: '#222' }}>Confirm Status Change</div>
+                    <div style={{ marginBottom: 18 }}>Are you sure you want to mark this doubt as {isClosed ? 'unsolved' : 'solved'}?</div>
+                    <button
+                      style={{
+                        background: '#222',
+                        color: '#f5e9da',
+                        fontWeight: 600,
+                        fontSize: '1em',
+                        padding: '0.6em 1.2em',
+                        borderRadius: 8,
+                        border: 'none',
+                        marginRight: 12,
+                        cursor: 'pointer',
+                      }}
+                      onClick={confirmToggleSolved}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      style={{
+                        background: '#f5e9da',
+                        color: '#222',
+                        fontWeight: 600,
+                        fontSize: '1em',
+                        padding: '0.6em 1.2em',
+                        borderRadius: 8,
+                        border: '1px solid #e2cdbb',
+                        cursor: 'pointer',
+                      }}
+                      onClick={cancelToggleSolved}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
               <button
                 type="button"
                 className="cd-titlebar__action"
@@ -262,6 +346,34 @@ export default function ChatDoubt() {
               >
                 {thread?.isEscalatedToProfessor ? "Escalated" : "Escalate"}
               </button>
+              {showEscalateConfirm && (
+                <div style={{
+                  position: 'fixed',
+                  top: 0,
+                  left: 0,
+                  width: '100vw',
+                  height: '100vh',
+                  background: 'rgba(0,0,0,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 1000,
+                }}>
+                  <div style={{
+                    background: '#fff',
+                    padding: '2rem',
+                    borderRadius: 12,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                    minWidth: 320,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{ fontWeight: 700, marginBottom: 18 }}>Confirm Escalation</div>
+                    <div style={{ marginBottom: 18 }}>Are you sure you want to escalate this doubt to the professor?</div>
+                    <button style={{ marginRight: 12 }} onClick={confirmEscalateToProfessor}>Yes</button>
+                    <button onClick={cancelEscalateToProfessor}>Cancel</button>
+                  </div>
+                </div>
+              )}
             </>
           ) : null}
         </div>
@@ -289,7 +401,17 @@ export default function ChatDoubt() {
               <div
                 key={msg.messageId}
                 className={`chat-bubble ${isUser ? "user" : "bot"}`}
-                style={{ marginBottom: 8 }}
+                style={{
+                  marginBottom: 8,
+                  background: isUser ? '#f5e9da' : '#b89b6c',
+                  color: isUser ? '#222' : '#fff',
+                  color: '#222',
+                  borderRadius: 12,
+                  padding: '12px 16px',
+                  maxWidth: '70%',
+                  alignSelf: isUser ? 'flex-end' : 'flex-start',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                }}
               >
                 {msg.content}
               </div>
@@ -303,9 +425,7 @@ export default function ChatDoubt() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={
-            canReply ? "Type your message..." : "This doubt is solved"
-          }
+          placeholder={replyPlaceholder}
           disabled={!canReply}
           onKeyDown={(e) => {
             if (e.key === "Enter" && canReply) handleSend();

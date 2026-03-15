@@ -3,7 +3,10 @@ const app = express();
 app.use(express.json());
 const { Pool } = require("pg");
 const cors = require("cors");
-app.use(cors({ origin: "http://localhost:5177" }));
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5177"],
+  credentials: true
+}));
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const dotenv = require("dotenv");
@@ -156,8 +159,7 @@ function threadAccessFilter(role) {
       where:
         "t.ta_id = $1 AND COALESCE(t.is_escalated_to_professor, FALSE) = FALSE",
     };
-  if (role === "professor")
-    return { where: "COALESCE(t.is_escalated_to_professor, FALSE) = TRUE" };
+  if (role === "professor") return { where: "TRUE" };
   return { where: "FALSE" };
 }
 
@@ -399,6 +401,98 @@ app.get("/threads", requireAuth, async (req, res) => {
   });
 });
 
+app.get("/professor/ta-stats", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+  if (!requireRole(res, auth.role, ["professor"])) return;
+
+  try {
+    const result = await pool.query(
+      `SELECT u.user_id AS ta_id,
+              u.email AS ta_email,
+              COUNT(t.thread_id) AS assigned_count,
+              COALESCE(SUM(CASE WHEN t.status = 'closed' THEN 1 ELSE 0 END), 0) AS solved_count
+       FROM users u
+       LEFT JOIN threads t ON t.ta_id = u.user_id
+       WHERE u.role = 'ta'
+       GROUP BY u.user_id, u.email
+       ORDER BY u.email ASC`,
+    );
+
+    return res.json({
+      tas: result.rows.map((r) => ({
+        taId: r.ta_id,
+        email: r.ta_email,
+        assignedCount: Number(r.assigned_count) || 0,
+        solvedCount: Number(r.solved_count) || 0,
+      })),
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Failed to load TA stats" });
+  }
+});
+
+app.get("/professor/ta-doubts", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+  if (!requireRole(res, auth.role, ["professor"])) return;
+
+  try {
+    const result = await pool.query(
+      `SELECT ta.user_id AS ta_id,
+              ta.email AS ta_email,
+              t.thread_id,
+              t.title,
+              t.status,
+              COALESCE(t.is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
+              s.email AS student_email
+       FROM users ta
+       LEFT JOIN threads t
+         ON t.ta_id = ta.user_id
+       LEFT JOIN users s ON s.user_id = t.student_id
+       WHERE ta.role = 'ta'
+       ORDER BY ta.email ASC, t.thread_id DESC`,
+    );
+
+    const map = new Map();
+
+    for (const r of result.rows) {
+      const taId = r.ta_id;
+      const taEmail = r.ta_email;
+
+      if (!map.has(taId)) {
+        map.set(taId, {
+          taId,
+          email: taEmail,
+          assignedCount: 0,
+          solvedCount: 0,
+          doubts: [],
+        });
+      }
+
+      const entry = map.get(taId);
+
+      if (r.thread_id != null) {
+        entry.assignedCount += 1;
+        if (r.status === "closed") entry.solvedCount += 1;
+        entry.doubts.push({
+          threadId: r.thread_id,
+          title: r.title,
+          status: r.status,
+          studentEmail: r.student_email,
+          isEscalatedToProfessor: r.is_escalated_to_professor === true,
+        });
+      }
+    }
+
+    return res.json({ tas: Array.from(map.values()) });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: "Failed to load TA doubts" });
+  }
+});
+
 app.patch("/threads/:threadId/escalate", requireAuth, async (req, res) => {
   const auth = getAuthContext(req, res);
   if (!auth) return;
@@ -602,7 +696,7 @@ app.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
       (auth.role === "ta" &&
         thread.ta_id === auth.userId &&
         thread.is_escalated_to_professor !== true) ||
-      (auth.role === "professor" && thread.is_escalated_to_professor === true);
+      auth.role === "professor";
 
     if (!allowed) {
       return res.status(403).json({ error: "Forbidden" });

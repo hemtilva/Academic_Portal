@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./AuthLayout.css";
 import doodleUrl from "../assets/doodle.png";
@@ -13,11 +13,6 @@ export default function Login() {
   const canSubmit = useMemo(() => {
     return email.trim().length > 0 && password.trim().length > 0;
   }, [email, password]);
-
-  useEffect(() => {
-    const token = localStorage.getItem("ap_token");
-    if (token) nav("/");
-  }, [nav]);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -41,7 +36,11 @@ export default function Login() {
     localStorage.setItem("ap_user", JSON.stringify(data.user));
 
     setStatus("Success");
-    nav("/doubts");
+    if (data.user && data.user.role === "professor") {
+      nav("/instructor");
+    } else {
+      nav("/doubts");
+    }
   }
 
   return (

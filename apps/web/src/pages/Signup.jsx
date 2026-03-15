@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./AuthLayout.css";
 import doodleUrl from "../assets/doodle.png";
@@ -22,11 +22,6 @@ export default function Signup() {
       password === confirmPassword
     );
   }, [email, password, confirmPassword]);
-
-  useEffect(() => {
-    const token = localStorage.getItem("ap_token");
-    if (token) nav("/");
-  }, [nav]);
 
   async function onSubmit(e) {
     e.preventDefault();

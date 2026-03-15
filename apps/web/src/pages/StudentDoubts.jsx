@@ -1,19 +1,21 @@
+
 import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 
 export default function StudentDoubts() {
-  const { user } = useOutletContext();
-  if (user?.role !== "student") {
-    return <div>Select a doubt to view the conversation.</div>;
-  }
-
+  const outlet = useOutletContext();
+  const user = outlet.user;
+  const reloadThreads = outlet.reloadThreads;
   const nav = useNavigate();
-  const { reloadThreads } = useOutletContext(); // only if you implement Option A
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  if (user?.role !== "student") {
+    return <div>Select a doubt to view the conversation.</div>;
+  }
 
   const canSubmit = title.trim() && message.trim() && !submitting;
 
@@ -79,7 +81,21 @@ export default function StudentDoubts() {
         }}
       />
 
-      <button type="submit" disabled={!canSubmit}>
+      <button
+        type="submit"
+        disabled={!canSubmit}
+        style={{
+          background: canSubmit ? '#f5e9da' : '#f5e9da',
+          color: canSubmit ? '#222' : '#888',
+          fontWeight: 600,
+          fontSize: '1em',
+          padding: '0.6em 1.2em',
+          borderRadius: 8,
+          border: '1px solid #e2cdbb',
+          cursor: canSubmit ? 'pointer' : 'not-allowed',
+          transition: 'background 0.2s, color 0.2s',
+        }}
+      >
         {submitting ? "Posting..." : "Post Doubt"}
       </button>
 
