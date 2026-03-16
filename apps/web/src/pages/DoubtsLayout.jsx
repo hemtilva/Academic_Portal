@@ -148,7 +148,13 @@ export default function DoubtsLayout() {
                   #{t.threadId} - {t.title}
                 </span>
                 <div
-                  className={`sd-status ${t.status === "closed" ? "resolved" : "unresolved"}`}
+                  className={`sd-status ${
+                    t.status === "closed"
+                      ? "resolved"
+                      : t.isEscalatedToProfessor
+                        ? "escalated"
+                        : "unresolved"
+                  }`}
                 />
               </NavLink>
             ))

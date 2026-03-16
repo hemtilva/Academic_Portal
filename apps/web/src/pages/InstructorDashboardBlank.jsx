@@ -71,8 +71,18 @@ export default function InstructorDashboardBlank() {
               </summary>
 
               <div style={{ padding: 6 }}>
-                {Array.isArray(ta.doubts) && ta.doubts.length > 0 ? (
-                  ta.doubts.map((d) => (
+                {(() => {
+                  const doubts = Array.isArray(ta.doubts) ? ta.doubts : [];
+
+                  if (doubts.length === 0) {
+                    return (
+                      <div style={{ padding: 12, color: "#888" }}>
+                        No doubts assigned to this TA
+                      </div>
+                    );
+                  }
+
+                  return doubts.map((d) => (
                     <button
                       key={d.threadId}
                       type="button"
@@ -86,12 +96,27 @@ export default function InstructorDashboardBlank() {
                         textAlign: "left",
                       }}
                     >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
-                        <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 4,
+                          minWidth: 0,
+                        }}
+                      >
+                        <div
+                          style={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
                           #{d.threadId} - {d.title}
                         </div>
                         <div style={{ fontSize: 12, color: "#888" }}>
-                          Asked by {d.studentEmail || "Student"} · {d.status === "closed" ? "Solved" : "Unsolved"} · {d.isEscalatedToProfessor ? "Escalated (reply)" : "View only"}
+                          Asked by {d.studentEmail || "Student"} ·{" "}
+                          {d.status === "closed" ? "Solved" : "Unsolved"} ·{" "}
+                          {d.isEscalatedToProfessor ? "Escalated (can reply)" : "View only"}
                         </div>
                       </div>
 
@@ -99,12 +124,8 @@ export default function InstructorDashboardBlank() {
                         className={`sd-status ${d.status === "closed" ? "resolved" : "unresolved"}`}
                       />
                     </button>
-                  ))
-                ) : (
-                  <div style={{ padding: 12, color: "#888" }}>
-                    No escalated doubts for this TA
-                  </div>
-                )}
+                  ));
+                })()}
               </div>
             </details>
           ))}

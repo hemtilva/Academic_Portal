@@ -506,6 +506,26 @@ app.patch("/threads/:threadId/escalate", requireAuth, async (req, res) => {
   }
 
   try {
+    const found = await pool.query(
+      "SELECT thread_id, student_id, status FROM threads WHERE thread_id = $1 LIMIT 1",
+      [threadId],
+    );
+
+    if (found.rows.length === 0) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    const t0 = found.rows[0];
+    if (t0.student_id !== auth.userId) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    if (t0.status === "closed") {
+      return res
+        .status(400)
+        .json({ error: "Cannot escalate a solved doubt" });
+    }
+
     const updated = await pool.query(
       `UPDATE threads
        SET is_escalated_to_professor = TRUE,
@@ -662,6 +682,67 @@ app.patch("/threads/:threadId/status", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/threads/:threadId", requireAuth, async (req, res) => {
+  const auth = getAuthContext(req, res);
+  if (!auth) return;
+
+  const threadId = Number(req.params.threadId);
+  if (!Number.isInteger(threadId) || threadId <= 0) {
+    return res
+      .status(400)
+      .json({ error: "threadId must be a positive integer" });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT t.thread_id, t.title, t.status, t.student_id, t.ta_id,
+              COALESCE(t.is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
+              t.escalated_at,
+              s.email AS student_email,
+              ta.email AS ta_email
+       FROM threads t
+       JOIN users s ON s.user_id = t.student_id
+       LEFT JOIN users ta ON ta.user_id = t.ta_id
+       WHERE t.thread_id = $1
+       LIMIT 1`,
+      [threadId],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Thread not found" });
+    }
+
+    const r = result.rows[0];
+    const allowed =
+      (auth.role === "student" && r.student_id === auth.userId) ||
+      (auth.role === "ta" &&
+        r.ta_id === auth.userId &&
+        r.is_escalated_to_professor !== true) ||
+      auth.role === "professor";
+
+    if (!allowed) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    return res.json({
+      thread: {
+        threadId: r.thread_id,
+        title: r.title,
+        status: r.status,
+        studentId: r.student_id,
+        taId: r.ta_id,
+        isEscalatedToProfessor: r.is_escalated_to_professor,
+        escalatedAt: r.escalated_at,
+        studentEmail: r.student_email,
+        taEmail: r.ta_email,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to fetch thread" });
+  }
+});
+
 app.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
   const auth = getAuthContext(req, res);
   if (!auth) return;
@@ -703,7 +784,7 @@ app.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
     }
 
     const result = await pool.query(
-      `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, u.email
+      `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, u.email, u.role
        FROM messages m
        JOIN users u ON u.user_id = m.sender_id
        WHERE m.thread_id = $1 AND m.message_id > $2
@@ -718,6 +799,7 @@ app.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
         threadId: r.thread_id,
         senderId: r.sender_id,
         senderEmail: r.email,
+        senderRole: r.role,
         content: r.content,
         createdAt: r.created_at,
       })),
@@ -772,7 +854,7 @@ app.post("/threads/:threadId/messages", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    if (thread.status === "closed" && auth.role !== "student") {
+    if (thread.status === "closed") {
       return res.status(403).json({ error: "Thread is closed" });
     }
 
@@ -784,13 +866,26 @@ app.post("/threads/:threadId/messages", requireAuth, async (req, res) => {
     );
 
     const m = inserted.rows[0];
+
+    const enriched = await pool.query(
+      `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, u.email, u.role
+       FROM messages m
+       JOIN users u ON u.user_id = m.sender_id
+       WHERE m.message_id = $1
+       LIMIT 1`,
+      [m.message_id],
+    );
+
+    const r = enriched.rows[0] || null;
     return res.status(201).json({
       message: {
-        messageId: m.message_id,
-        threadId: m.thread_id,
-        senderId: m.sender_id,
-        content: m.content,
-        createdAt: m.created_at,
+        messageId: (r?.message_id ?? m.message_id),
+        threadId: (r?.thread_id ?? m.thread_id),
+        senderId: (r?.sender_id ?? m.sender_id),
+        senderEmail: r?.email,
+        senderRole: r?.role,
+        content: (r?.content ?? m.content),
+        createdAt: (r?.created_at ?? m.created_at),
       },
     });
   } catch (err) {

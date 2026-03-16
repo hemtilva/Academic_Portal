@@ -1,27 +1,67 @@
-import { useOutletContext, useParams, useNavigate } from "react-router-dom";
+import {
+  useOutletContext,
+  useParams,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { apiFetch } from "../lib/api";
 
 export default function ChatDoubt() {
   const nav = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const { threads, user, reloadThreads } = useOutletContext();
+
+  const isInstructorRoute = useMemo(() => {
+    const path = String(location?.pathname || "");
+    return path.startsWith("/instructor/") && path !== "/instructor";
+  }, [location?.pathname]);
 
   const thread = useMemo(
     () => threads?.find((t) => String(t.threadId) === String(id)),
     [threads, id],
   );
 
-  const title = thread?.title || "Doubt";
-  const isClosed = thread?.status === "closed";
+  const [threadDetails, setThreadDetails] = useState(null);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+
+    // If the thread isn't in the sidebar list (common on refresh/deep-link),
+    // fetch its metadata so the title/status/name labels can still render.
+    if (thread?.title) {
+      setThreadDetails(null);
+      return;
+    }
+
+    (async () => {
+      try {
+        const data = await apiFetch(`/threads/${id}`);
+        if (!cancelled) setThreadDetails(data?.thread || null);
+      } catch {
+        // Ignore: the messages request will show the auth/forbidden error.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, thread?.title]);
+
+  const t = thread || threadDetails;
+
+  const title = t?.title || "Doubt";
+  const isClosed = t?.status === "closed";
   const canToggleSolved = user?.role === "student";
   const canReply = useMemo(() => {
     if (!user) return false;
-    if (user.role === "student") return true;
     if (isClosed) return false;
-    if (user.role === "professor") return !!thread?.isEscalatedToProfessor;
+    if (user.role === "student") return true;
+    if (user.role === "professor") return !!t?.isEscalatedToProfessor;
     return true; // ta (and any other non-student roles) can reply to open threads
-  }, [user, isClosed, thread?.isEscalatedToProfessor]);
+  }, [user, isClosed, t?.isEscalatedToProfessor]);
 
   const replyPlaceholder = useMemo(() => {
     if (canReply) return "Type your message...";
@@ -29,17 +69,6 @@ export default function ChatDoubt() {
     if (user?.role === "professor") return "View only (not escalated)";
     return "You cannot reply";
   }, [canReply, isClosed, user?.role]);
-
-  const leftTitleLabel = useMemo(() => {
-    if (!user) return "";
-    if (user.role === "student") {
-      return thread?.taEmail ? `${thread.taEmail}` : "TA";
-    }
-    if (user.role === "ta" || user.role === "professor") {
-      return thread?.studentEmail ? `${thread.studentEmail}` : "Student";
-    }
-    return "";
-  }, [user, thread?.taEmail, thread?.studentEmail]);
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +80,60 @@ export default function ChatDoubt() {
   const [showSolvedConfirm, setShowSolvedConfirm] = useState(false);
   const [showEscalateConfirm, setShowEscalateConfirm] = useState(false);
   const lastSeenIdRef = useRef(0);
+  const bottomRef = useRef(null);
+
+  const firstProfessorMessage = useMemo(() => {
+    if (!t?.isEscalatedToProfessor) return null;
+    const msg = messages.find((m) => m?.senderRole === "professor");
+    return msg || null;
+  }, [messages, t?.isEscalatedToProfessor]);
+
+  const firstProfessorMessageId = firstProfessorMessage?.messageId ?? null;
+  const professorIdentity = useMemo(() => {
+    if (!t?.isEscalatedToProfessor) return "";
+    if (user?.role === "professor") return user?.email || "Professor";
+    return firstProfessorMessage?.senderEmail || "Professor";
+  }, [
+    t?.isEscalatedToProfessor,
+    user?.role,
+    user?.email,
+    firstProfessorMessage?.senderEmail,
+  ]);
+
+  const professorDividerText = useMemo(() => {
+    if (!professorIdentity) return "";
+    if (professorIdentity === "Professor") return "Professor";
+    return `${professorIdentity}`;
+  }, [professorIdentity]);
+
+  const leftTitleLabel = useMemo(() => {
+    if (!user) return "";
+    if (user.role === "student") {
+      if (t?.isEscalatedToProfessor) {
+        return professorIdentity || "Professor";
+      }
+      return t?.taEmail ? `${t.taEmail}` : "TA";
+    }
+    if (user.role === "ta" || user.role === "professor") {
+      return t?.studentEmail ? `${t.studentEmail}` : "Student";
+    }
+    return "";
+  }, [user, t?.taEmail, t?.studentEmail, t?.isEscalatedToProfessor, professorIdentity]);
+
+  const professorTaLabel = useMemo(() => {
+    if (user?.role !== "professor") return "";
+    return t?.taEmail ? `${t.taEmail}` : "TA";
+  }, [user?.role, t?.taEmail]);
+
+  function goBackToDashboard() {
+    nav("/instructor", { replace: false });
+  }
+
+  useEffect(() => {
+    // Keep the newest messages visible on initial load and on new messages.
+    // Using an anchor avoids brittle scrollHeight math.
+    bottomRef.current?.scrollIntoView({ behavior: "auto", block: "end" });
+  }, [messages.length, loaded]);
 
   function toggleSolved() {
     if (!id || !canToggleSolved) return;
@@ -85,7 +168,8 @@ export default function ChatDoubt() {
 
   function escalateToProfessor() {
     if (!id || user?.role !== "student") return;
-    if (thread?.isEscalatedToProfessor) return;
+    if (t?.isEscalatedToProfessor) return;
+    if (isClosed) return;
     setShowEscalateConfirm(true);
   }
   async function confirmEscalateToProfessor() {
@@ -259,8 +343,20 @@ export default function ChatDoubt() {
   return (
     <>
       <div className="cd-titlebar">
-        <div className="cd-titlebar__left" title={leftTitleLabel}>
-          {leftTitleLabel}
+        <div className="cd-titlebar__left">
+          {isInstructorRoute ? (
+            <button
+              type="button"
+              className="cd-backBtn"
+              onClick={goBackToDashboard}
+              title="Back to dashboard"
+            >
+              Back
+            </button>
+          ) : null}
+          <div className="cd-titlebar__leftLabel" title={leftTitleLabel}>
+            {leftTitleLabel}
+          </div>
         </div>
         <div className="cd-titlebar__title">{title}</div>
         <div className="cd-titlebar__right">
@@ -275,41 +371,56 @@ export default function ChatDoubt() {
                 {isClosed ? "Solved" : "Unsolved"}
               </button>
               {showSolvedConfirm && (
-                <div style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  width: '100vw',
-                  height: '100vh',
-                  background: 'rgba(0,0,0,0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 1000,
-                }}>
-                  <div style={{
-                    background: '#f5e9da',
-                    padding: '2rem',
-                    borderRadius: 12,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                    minWidth: 320,
-                    textAlign: 'center',
-                    color: '#222',
-                    border: '1px solid #e2cdbb',
-                  }}>
-                    <div style={{ fontWeight: 700, marginBottom: 18, color: '#222' }}>Confirm Status Change</div>
-                    <div style={{ marginBottom: 18 }}>Are you sure you want to mark this doubt as {isClosed ? 'unsolved' : 'solved'}?</div>
+                <div
+                  style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100vw",
+                    height: "100vh",
+                    background: "rgba(0,0,0,0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1000,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "#f5e9da",
+                      padding: "2rem",
+                      borderRadius: 12,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                      minWidth: 320,
+                      textAlign: "center",
+                      color: "#222",
+                      border: "1px solid #e2cdbb",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        marginBottom: 18,
+                        color: "#222",
+                      }}
+                    >
+                      Confirm Status Change
+                    </div>
+                    <div style={{ marginBottom: 18 }}>
+                      Are you sure you want to mark this doubt as{" "}
+                      {isClosed ? "unsolved" : "solved"}?
+                    </div>
                     <button
                       style={{
-                        background: '#222',
-                        color: '#f5e9da',
+                        background: "#222",
+                        color: "#f5e9da",
                         fontWeight: 600,
-                        fontSize: '1em',
-                        padding: '0.6em 1.2em',
+                        fontSize: "1em",
+                        padding: "0.6em 1.2em",
                         borderRadius: 8,
-                        border: 'none',
+                        border: "none",
                         marginRight: 12,
-                        cursor: 'pointer',
+                        cursor: "pointer",
                       }}
                       onClick={confirmToggleSolved}
                     >
@@ -317,14 +428,14 @@ export default function ChatDoubt() {
                     </button>
                     <button
                       style={{
-                        background: '#f5e9da',
-                        color: '#222',
+                        background: "#f5e9da",
+                        color: "#222",
                         fontWeight: 600,
-                        fontSize: '1em',
-                        padding: '0.6em 1.2em',
+                        fontSize: "1em",
+                        padding: "0.6em 1.2em",
                         borderRadius: 8,
-                        border: '1px solid #e2cdbb',
-                        cursor: 'pointer',
+                        border: "1px solid #e2cdbb",
+                        cursor: "pointer",
                       }}
                       onClick={cancelToggleSolved}
                     >
@@ -337,44 +448,101 @@ export default function ChatDoubt() {
                 type="button"
                 className="cd-titlebar__action"
                 onClick={escalateToProfessor}
-                disabled={escalating || !!thread?.isEscalatedToProfessor}
+                disabled={escalating || !!t?.isEscalatedToProfessor || isClosed}
                 title={
-                  thread?.isEscalatedToProfessor
+                  t?.isEscalatedToProfessor
                     ? "Already escalated"
-                    : "Escalate this doubt to the professor"
+                    : isClosed
+                      ? "Cannot escalate a solved doubt"
+                      : "Escalate this doubt to the professor"
                 }
               >
-                {thread?.isEscalatedToProfessor ? "Escalated" : "Escalate"}
+                {t?.isEscalatedToProfessor ? "Escalated" : "Escalate"}
               </button>
               {showEscalateConfirm && (
-                <div style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  width: '100vw',
-                  height: '100vh',
-                  background: 'rgba(0,0,0,0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 1000,
-                }}>
-                  <div style={{
-                    background: '#fff',
-                    padding: '2rem',
-                    borderRadius: 12,
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-                    minWidth: 320,
-                    textAlign: 'center',
-                  }}>
-                    <div style={{ fontWeight: 700, marginBottom: 18 }}>Confirm Escalation</div>
-                    <div style={{ marginBottom: 18 }}>Are you sure you want to escalate this doubt to the professor?</div>
-                    <button style={{ marginRight: 12 }} onClick={confirmEscalateToProfessor}>Yes</button>
-                    <button onClick={cancelEscalateToProfessor}>Cancel</button>
+                <div
+                  style={{
+                    position: "fixed",
+                    top: 0,
+                    left: 0,
+                    width: "100vw",
+                    height: "100vh",
+                    background: "rgba(0,0,0,0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    zIndex: 1000,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "#f5e9da",
+                      padding: "2rem",
+                      borderRadius: 12,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                      minWidth: 320,
+                      textAlign: "center",
+                      color: "#222",
+                      border: "1px solid #e2cdbb",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 700,
+                        marginBottom: 18,
+                        color: "#222",
+                      }}
+                    >
+                      Confirm Escalation
+                    </div>
+                    <div style={{ marginBottom: 18 }}>
+                      Are you sure you want to escalate this doubt to the
+                      professor?
+                      <div
+                        style={{ marginTop: 10, fontSize: 13, color: "#555" }}
+                      >
+                        This will hand off the doubt to the professor.
+                      </div>
+                    </div>
+                    <button
+                      style={{
+                        background: "#222",
+                        color: "#f5e9da",
+                        fontWeight: 600,
+                        fontSize: "1em",
+                        padding: "0.6em 1.2em",
+                        borderRadius: 8,
+                        border: "none",
+                        marginRight: 12,
+                        cursor: "pointer",
+                      }}
+                      onClick={confirmEscalateToProfessor}
+                    >
+                      Yes
+                    </button>
+                    <button
+                      style={{
+                        background: "#f5e9da",
+                        color: "#222",
+                        fontWeight: 600,
+                        fontSize: "1em",
+                        padding: "0.6em 1.2em",
+                        borderRadius: 8,
+                        border: "1px solid #e2cdbb",
+                        cursor: "pointer",
+                      }}
+                      onClick={cancelEscalateToProfessor}
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               )}
             </>
+          ) : user?.role === "professor" ? (
+            <div className="cd-titlebar__meta" title={professorTaLabel}>
+              {professorTaLabel}
+            </div>
           ) : null}
         </div>
       </div>
@@ -392,32 +560,84 @@ export default function ChatDoubt() {
           messages.map((msg) => {
             const senderId = Number(msg.senderId);
             const viewerId = Number(user?.id);
-            const taId = Number(thread?.taId);
+            const taId = Number(t?.taId);
             const isUser =
               user?.role === "professor"
                 ? senderId === taId || senderId === viewerId
                 : senderId === viewerId;
+
+            const showProfessorDivider =
+              !!firstProfessorMessageId &&
+              String(msg.messageId) === String(firstProfessorMessageId);
+
             return (
               <div
                 key={msg.messageId}
-                className={`chat-bubble ${isUser ? "user" : "bot"}`}
                 style={{
-                  marginBottom: 8,
-                  background: isUser ? '#f5e9da' : '#b89b6c',
-                  color: isUser ? '#222' : '#fff',
-                  color: '#222',
-                  borderRadius: 12,
-                  padding: '12px 16px',
-                  maxWidth: '70%',
-                  alignSelf: isUser ? 'flex-end' : 'flex-start',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+                  display: "flex",
+                  flexDirection: "column",
+                  width: "100%",
                 }}
               >
-                {msg.content}
+                {showProfessorDivider ? (
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      margin: "10px 0 14px",
+                      padding: "0 8px",
+                      width: "100%",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: 1,
+                        background: "#e2cdbb",
+                        flex: 1,
+                      }}
+                    />
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "#555",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={professorIdentity}
+                    >
+                      {professorDividerText}
+                    </div>
+                    <div
+                      style={{
+                        height: 1,
+                        background: "#e2cdbb",
+                        flex: 1,
+                      }}
+                    />
+                  </div>
+                ) : null}
+
+                <div
+                  className={`chat-bubble ${isUser ? "user" : "bot"}`}
+                  style={{
+                    marginBottom: 8,
+                    background: isUser ? "#f5e9da" : "#b89b6c",
+                    color: isUser ? "#222" : "#fff",
+                    color: "#222",
+                    borderRadius: 12,
+                    padding: "12px 16px",
+                    maxWidth: "70%",
+                    alignSelf: isUser ? "flex-end" : "flex-start",
+                    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+                  }}
+                >
+                  {msg.content}
+                </div>
               </div>
             );
           })
         )}
+        <div ref={bottomRef} />
       </div>
 
       <div className="chat-input-area">
