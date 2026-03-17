@@ -118,7 +118,13 @@ export default function ChatDoubt() {
       return t?.studentEmail ? `${t.studentEmail}` : "Student";
     }
     return "";
-  }, [user, t?.taEmail, t?.studentEmail, t?.isEscalatedToProfessor, professorIdentity]);
+  }, [
+    user,
+    t?.taEmail,
+    t?.studentEmail,
+    t?.isEscalatedToProfessor,
+    professorIdentity,
+  ]);
 
   const professorTaLabel = useMemo(() => {
     if (user?.role !== "professor") return "";
@@ -378,7 +384,7 @@ export default function ChatDoubt() {
                     left: 0,
                     width: "100vw",
                     height: "100vh",
-                    background: "rgba(0,0,0,0.15)",
+                    background: "var(--ap-overlay)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -387,21 +393,21 @@ export default function ChatDoubt() {
                 >
                   <div
                     style={{
-                      background: "#f5e9da",
+                      background: "var(--ap-surface)",
                       padding: "2rem",
                       borderRadius: 12,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                      boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
                       minWidth: 320,
                       textAlign: "center",
-                      color: "#222",
-                      border: "1px solid #e2cdbb",
+                      color: "var(--ap-text)",
+                      border: "1px solid var(--ap-border)",
                     }}
                   >
                     <div
                       style={{
                         fontWeight: 700,
                         marginBottom: 18,
-                        color: "#222",
+                        color: "var(--ap-text)",
                       }}
                     >
                       Confirm Status Change
@@ -412,13 +418,13 @@ export default function ChatDoubt() {
                     </div>
                     <button
                       style={{
-                        background: "#222",
-                        color: "#f5e9da",
+                        background: "var(--ap-primary)",
+                        color: "#2e2432",
                         fontWeight: 600,
                         fontSize: "1em",
                         padding: "0.6em 1.2em",
                         borderRadius: 8,
-                        border: "none",
+                        border: "1px solid var(--ap-primary-strong)",
                         marginRight: 12,
                         cursor: "pointer",
                       }}
@@ -428,13 +434,13 @@ export default function ChatDoubt() {
                     </button>
                     <button
                       style={{
-                        background: "#f5e9da",
-                        color: "#222",
+                        background: "transparent",
+                        color: "var(--ap-text)",
                         fontWeight: 600,
                         fontSize: "1em",
                         padding: "0.6em 1.2em",
                         borderRadius: 8,
-                        border: "1px solid #e2cdbb",
+                        border: "1px solid var(--ap-border-strong)",
                         cursor: "pointer",
                       }}
                       onClick={cancelToggleSolved}
@@ -467,7 +473,7 @@ export default function ChatDoubt() {
                     left: 0,
                     width: "100vw",
                     height: "100vh",
-                    background: "rgba(0,0,0,0.15)",
+                    background: "var(--ap-overlay)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
@@ -476,21 +482,21 @@ export default function ChatDoubt() {
                 >
                   <div
                     style={{
-                      background: "#f5e9da",
+                      background: "var(--ap-surface)",
                       padding: "2rem",
                       borderRadius: 12,
-                      boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                      boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
                       minWidth: 320,
                       textAlign: "center",
-                      color: "#222",
-                      border: "1px solid #e2cdbb",
+                      color: "var(--ap-text)",
+                      border: "1px solid var(--ap-border)",
                     }}
                   >
                     <div
                       style={{
                         fontWeight: 700,
                         marginBottom: 18,
-                        color: "#222",
+                        color: "var(--ap-text)",
                       }}
                     >
                       Confirm Escalation
@@ -499,20 +505,24 @@ export default function ChatDoubt() {
                       Are you sure you want to escalate this doubt to the
                       professor?
                       <div
-                        style={{ marginTop: 10, fontSize: 13, color: "#555" }}
+                        style={{
+                          marginTop: 10,
+                          fontSize: 13,
+                          color: "var(--ap-muted)",
+                        }}
                       >
                         This will hand off the doubt to the professor.
                       </div>
                     </div>
                     <button
                       style={{
-                        background: "#222",
-                        color: "#f5e9da",
+                        background: "var(--ap-primary)",
+                        color: "#2e2432",
                         fontWeight: 600,
                         fontSize: "1em",
                         padding: "0.6em 1.2em",
                         borderRadius: 8,
-                        border: "none",
+                        border: "1px solid var(--ap-primary-strong)",
                         marginRight: 12,
                         cursor: "pointer",
                       }}
@@ -522,13 +532,13 @@ export default function ChatDoubt() {
                     </button>
                     <button
                       style={{
-                        background: "#f5e9da",
-                        color: "#222",
+                        background: "transparent",
+                        color: "var(--ap-text)",
                         fontWeight: 600,
                         fontSize: "1em",
                         padding: "0.6em 1.2em",
                         borderRadius: 8,
-                        border: "1px solid #e2cdbb",
+                        border: "1px solid var(--ap-border-strong)",
                         cursor: "pointer",
                       }}
                       onClick={cancelEscalateToProfessor}
@@ -548,7 +558,9 @@ export default function ChatDoubt() {
       </div>
 
       {error ? (
-        <div style={{ color: "#b00020", marginBottom: 12 }}>{error}</div>
+        <div style={{ color: "var(--ap-danger)", marginBottom: 12 }}>
+          {error}
+        </div>
       ) : null}
 
       <div className="chat-bubbles" style={{ marginBottom: 16 }}>
@@ -593,14 +605,14 @@ export default function ChatDoubt() {
                     <div
                       style={{
                         height: 1,
-                        background: "#e2cdbb",
+                        background: "var(--ap-border-strong)",
                         flex: 1,
                       }}
                     />
                     <div
                       style={{
                         fontSize: 12,
-                        color: "#555",
+                        color: "var(--ap-muted)",
                         whiteSpace: "nowrap",
                       }}
                       title={professorIdentity}
@@ -610,7 +622,7 @@ export default function ChatDoubt() {
                     <div
                       style={{
                         height: 1,
-                        background: "#e2cdbb",
+                        background: "var(--ap-border-strong)",
                         flex: 1,
                       }}
                     />
@@ -621,14 +633,8 @@ export default function ChatDoubt() {
                   className={`chat-bubble ${isUser ? "user" : "bot"}`}
                   style={{
                     marginBottom: 8,
-                    background: isUser ? "#f5e9da" : "#b89b6c",
-                    color: isUser ? "#222" : "#fff",
-                    color: "#222",
-                    borderRadius: 12,
-                    padding: "12px 16px",
                     maxWidth: "70%",
                     alignSelf: isUser ? "flex-end" : "flex-start",
-                    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
                   }}
                 >
                   {msg.content}

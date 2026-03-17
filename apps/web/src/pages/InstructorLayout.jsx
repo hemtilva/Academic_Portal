@@ -79,7 +79,7 @@ export default function InstructorLayout() {
                 left: 0,
                 width: "100vw",
                 height: "100vh",
-                background: "rgba(0,0,0,0.15)",
+                background: "var(--ap-overlay)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -88,18 +88,22 @@ export default function InstructorLayout() {
             >
               <div
                 style={{
-                  background: "#f5e9da",
+                  background: "var(--ap-surface)",
                   padding: "2rem",
                   borderRadius: 12,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+                  boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
                   minWidth: 320,
                   textAlign: "center",
-                  color: "#222",
-                  border: "1px solid #e2cdbb",
+                  color: "var(--ap-text)",
+                  border: "1px solid var(--ap-border)",
                 }}
               >
                 <div
-                  style={{ fontWeight: 700, marginBottom: 18, color: "#222" }}
+                  style={{
+                    fontWeight: 700,
+                    marginBottom: 18,
+                    color: "var(--ap-text)",
+                  }}
                 >
                   Confirm Logout
                 </div>
@@ -108,13 +112,13 @@ export default function InstructorLayout() {
                 </div>
                 <button
                   style={{
-                    background: "#222",
-                    color: "#f5e9da",
+                    background: "var(--ap-primary)",
+                    color: "#2e2432",
                     fontWeight: 600,
                     fontSize: "1em",
                     padding: "0.6em 1.2em",
                     borderRadius: 8,
-                    border: "none",
+                    border: "1px solid var(--ap-primary-strong)",
                     marginRight: 12,
                     cursor: "pointer",
                   }}
@@ -124,13 +128,13 @@ export default function InstructorLayout() {
                 </button>
                 <button
                   style={{
-                    background: "#f5e9da",
-                    color: "#222",
+                    background: "transparent",
+                    color: "var(--ap-text)",
                     fontWeight: 600,
                     fontSize: "1em",
                     padding: "0.6em 1.2em",
                     borderRadius: 8,
-                    border: "1px solid #e2cdbb",
+                    border: "1px solid var(--ap-border-strong)",
                     cursor: "pointer",
                   }}
                   onClick={cancelLogout}
@@ -163,7 +167,7 @@ export default function InstructorLayout() {
               fontWeight: 700,
               fontSize: 16,
               margin: "16px 0 8px 0",
-              color: "#6054dc",
+              color: "var(--ap-accent)",
             }}
           >
             Escalated Doubts
@@ -174,7 +178,7 @@ export default function InstructorLayout() {
           ) : threadsError ? (
             <div style={{ padding: 12 }}>{threadsError}</div>
           ) : threads.length === 0 ? (
-            <div style={{ padding: 12, color: "#888" }}>
+            <div style={{ padding: 12, color: "var(--ap-muted)" }}>
               No escalated doubts
             </div>
           ) : (
@@ -192,10 +196,10 @@ export default function InstructorLayout() {
                 </span>
                 <div
                   className={`sd-status ${
-                    t.status === "closed"
-                      ? "resolved"
-                      : t.isEscalatedToProfessor
-                        ? "escalated"
+                    t.isEscalatedToProfessor
+                      ? "escalated"
+                      : t.status === "closed"
+                        ? "resolved"
                         : "unresolved"
                   }`}
                 />

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { apiFetch } from "../lib/api";
@@ -53,19 +52,14 @@ export default function StudentDoubts() {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      style={{ width: "100%", maxWidth: 650, margin: "0 auto" }}
-    >
-      <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
-        New Doubt
-      </div>
+    <form onSubmit={onSubmit} className="ap-page ap-page--centered ap-card">
+      <div className="ap-title">New Doubt</div>
 
       <input
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Subject / Title"
-        style={{ width: "100%", padding: 12, marginBottom: 12 }}
+        className="ap-input"
       />
 
       <textarea
@@ -73,33 +67,20 @@ export default function StudentDoubts() {
         onChange={(e) => setMessage(e.target.value)}
         placeholder="Write your doubt..."
         rows={6}
-        style={{
-          width: "100%",
-          padding: 12,
-          marginBottom: 12,
-          resize: "vertical",
-        }}
+        className="ap-textarea"
       />
 
-      <button
-        type="submit"
-        disabled={!canSubmit}
-        style={{
-          background: canSubmit ? '#f5e9da' : '#f5e9da',
-          color: canSubmit ? '#222' : '#888',
-          fontWeight: 600,
-          fontSize: '1em',
-          padding: '0.6em 1.2em',
-          borderRadius: 8,
-          border: '1px solid #e2cdbb',
-          cursor: canSubmit ? 'pointer' : 'not-allowed',
-          transition: 'background 0.2s, color 0.2s',
-        }}
-      >
+      <button type="submit" disabled={!canSubmit} className="ap-button">
         {submitting ? "Posting..." : "Post Doubt"}
       </button>
 
-      {status ? <div style={{ marginTop: 10 }}>{status}</div> : null}
+      {status ? (
+        <div
+          className={`ap-status${status.toLowerCase().includes("failed") ? " is-error" : ""}`}
+        >
+          {status}
+        </div>
+      ) : null}
     </form>
   );
 }

@@ -31,52 +31,33 @@ export default function InstructorDashboardBlank() {
   }, []);
 
   return (
-    <div style={{ width: "100%", maxWidth: 900, margin: "0 auto" }}>
-      <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
-        TA Dashboard
-      </div>
+    <div className="ap-page ap-page--centered ap-card">
+      <div className="ap-title">TA Dashboard</div>
 
       {loading ? (
-        <div style={{ padding: 12 }}>Loading...</div>
+        <div className="ap-dashboard-empty">Loading...</div>
       ) : error ? (
-        <div style={{ padding: 12, color: "#c00" }}>{error}</div>
+        <div className="ap-status is-error">{error}</div>
       ) : tas.length === 0 ? (
-        <div style={{ padding: 12, color: "#888" }}>No TAs found</div>
+        <div className="ap-dashboard-empty">No TAs found</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="ap-dashboard-list">
           {tas.map((ta) => (
-            <details
-              key={ta.taId}
-              style={{
-                border: "1px solid rgba(255,255,255,0.08)",
-                borderRadius: 10,
-                overflow: "hidden",
-              }}
-            >
-              <summary
-                style={{
-                  listStyle: "none",
-                  cursor: "pointer",
-                  padding: "12px 14px",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
+            <details key={ta.taId} className="ap-dashboard-group">
+              <summary className="ap-dashboard-summary">
                 <span style={{ fontWeight: 700 }}>{ta.email}</span>
-                <span style={{ color: "#888", fontSize: 13 }}>
+                <span className="ap-dashboard-summaryMeta">
                   Assigned: {ta.assignedCount} · Solved: {ta.solvedCount}
                 </span>
               </summary>
 
-              <div style={{ padding: 6 }}>
+              <div className="ap-dashboard-doubts">
                 {(() => {
                   const doubts = Array.isArray(ta.doubts) ? ta.doubts : [];
 
                   if (doubts.length === 0) {
                     return (
-                      <div style={{ padding: 12, color: "#888" }}>
+                      <div className="ap-dashboard-empty">
                         No doubts assigned to this TA
                       </div>
                     );
@@ -96,32 +77,27 @@ export default function InstructorDashboardBlank() {
                         textAlign: "left",
                       }}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: 4,
-                          minWidth: 0,
-                        }}
-                      >
-                        <div
-                          style={{
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
+                      <div className="ap-dashboard-itemMain">
+                        <div className="ap-dashboard-itemTitle">
                           #{d.threadId} - {d.title}
                         </div>
-                        <div style={{ fontSize: 12, color: "#888" }}>
+                        <div className="ap-dashboard-itemMeta">
                           Asked by {d.studentEmail || "Student"} ·{" "}
                           {d.status === "closed" ? "Solved" : "Unsolved"} ·{" "}
-                          {d.isEscalatedToProfessor ? "Escalated (can reply)" : "View only"}
+                          {d.isEscalatedToProfessor
+                            ? "Escalated (can reply)"
+                            : "View only"}
                         </div>
                       </div>
 
                       <div
-                        className={`sd-status ${d.status === "closed" ? "resolved" : "unresolved"}`}
+                        className={`sd-status ${
+                          d.isEscalatedToProfessor
+                            ? "escalated"
+                            : d.status === "closed"
+                              ? "resolved"
+                              : "unresolved"
+                        }`}
                       />
                     </button>
                   ));
