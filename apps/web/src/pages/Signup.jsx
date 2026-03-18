@@ -49,7 +49,7 @@ export default function Signup() {
     localStorage.setItem("ap_user", JSON.stringify(data.user));
 
     setStatus("Account created. Logged in!");
-    nav("/");
+    nav("/courses");
   }
 
   return (

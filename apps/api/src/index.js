@@ -2,6 +2,8 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 
+dotenv.config();
+
 const {
   pool,
   testDbConnection,
@@ -27,8 +29,6 @@ const { createAuthRouter } = require("./routes/auth");
 const { createCoursesRouter } = require("./routes/courses");
 const { createProfessorRouter } = require("./routes/professor");
 const { createThreadsRouter } = require("./routes/threads");
-
-dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;

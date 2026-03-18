@@ -6,6 +6,7 @@ export default function StudentDoubts() {
   const outlet = useOutletContext();
   const user = outlet.user;
   const reloadThreads = outlet.reloadThreads;
+  const courseId = outlet.courseId;
   const nav = useNavigate();
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
@@ -28,7 +29,7 @@ export default function StudentDoubts() {
 
       const created = await apiFetch("/threads", {
         method: "POST",
-        body: { title: title.trim() },
+        body: { title: title.trim(), courseId },
       });
 
       const threadId = created?.thread?.threadId;
@@ -37,13 +38,13 @@ export default function StudentDoubts() {
       setStatus("Posting first message...");
       await apiFetch(`/threads/${threadId}/messages`, {
         method: "POST",
-        body: { content: message.trim() },
+        body: { content: message.trim(), courseId },
       });
 
       if (typeof reloadThreads === "function") await reloadThreads();
 
       setStatus("");
-      nav(`/doubts/${threadId}`);
+      nav(`/course/${courseId}/doubts/${threadId}`);
     } catch (err) {
       setStatus(err?.message || "Failed to create doubt");
     } finally {

@@ -1,9 +1,10 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import "./StudentDoubts.css";
 
 export default function DoubtsLayout() {
+  const { courseId } = useParams();
   const nav = useNavigate();
   const [user, setUser] = useState(null);
   const [threads, setThreads] = useState([]);
@@ -15,7 +16,7 @@ export default function DoubtsLayout() {
     try {
       setLoadingThreads(true);
       setThreadsError("");
-      const data = await apiFetch("/threads");
+      const data = await apiFetch(`/threads?courseId=${courseId}`);
       setThreads(data.threads || []);
     } catch (e) {
       setThreadsError(e.message || "Failed to load threads");
@@ -34,11 +35,16 @@ export default function DoubtsLayout() {
       return;
     }
 
+    if (!courseId) {
+      nav("/courses", { replace: true });
+      return;
+    }
+
     const storedUser = localStorage.getItem("ap_user");
     if (storedUser) setUser(JSON.parse(storedUser));
 
     reloadThreads();
-  }, [nav]);
+  }, [nav, courseId]);
 
   function logout(e) {
     e.preventDefault();
@@ -65,6 +71,9 @@ export default function DoubtsLayout() {
         </div>
 
         <div className="sd-nav">
+          <button type="button" onClick={() => nav("/courses")}>
+            Courses
+          </button>
           <button type="button" onClick={logout}>
             Logout
           </button>
@@ -152,7 +161,7 @@ export default function DoubtsLayout() {
             threads.map((t) => (
               <NavLink
                 key={t.threadId}
-                to={`/doubts/${t.threadId}`}
+                to={`/course/${courseId}/doubts/${t.threadId}`}
                 className={({ isActive }) =>
                   `sd-doubtItem${isActive ? " is-active" : ""}`
                 }
@@ -180,7 +189,7 @@ export default function DoubtsLayout() {
             <button
               type="button"
               className="sd-composeBtn"
-              onClick={() => nav("/doubts")}
+              onClick={() => nav(`/course/${courseId}/doubts`)}
               aria-label="Post a new doubt"
               title="Post a new doubt"
             >
@@ -191,7 +200,7 @@ export default function DoubtsLayout() {
       </div>
 
       <div className="sd-chatArea">
-        <Outlet context={{ threads, user, reloadThreads }} />
+        <Outlet context={{ threads, user, reloadThreads, courseId }} />
       </div>
     </div>
   );

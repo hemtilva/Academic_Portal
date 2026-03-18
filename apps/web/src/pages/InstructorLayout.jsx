@@ -1,9 +1,10 @@
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import "./StudentDoubts.css";
 
 export default function InstructorLayout() {
+  const { courseId } = useParams();
   const nav = useNavigate();
   const [user, setUser] = useState(null);
   const [threads, setThreads] = useState([]);
@@ -15,7 +16,7 @@ export default function InstructorLayout() {
       setLoadingThreads(true);
       setThreadsError("");
 
-      const data = await apiFetch("/threads");
+      const data = await apiFetch(`/threads?courseId=${courseId}`);
       const list = Array.isArray(data?.threads) ? data.threads : [];
       setThreads(list.filter((t) => t.isEscalatedToProfessor));
     } catch (e) {
@@ -36,11 +37,16 @@ export default function InstructorLayout() {
       return;
     }
 
+    if (!courseId) {
+      nav("/courses", { replace: true });
+      return;
+    }
+
     const storedUser = localStorage.getItem("ap_user");
     if (storedUser) setUser(JSON.parse(storedUser));
 
     reloadThreads();
-  }, [nav]);
+  }, [nav, courseId]);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   function logout(e) {
@@ -68,6 +74,9 @@ export default function InstructorLayout() {
         </div>
 
         <div className="sd-nav">
+          <button type="button" onClick={() => nav("/courses")}>
+            Courses
+          </button>
           <button type="button" onClick={logout}>
             Logout
           </button>
@@ -148,7 +157,7 @@ export default function InstructorLayout() {
 
         <div className="sd-doubtList">
           <NavLink
-            to="/instructor"
+            to={`/course/${courseId}/instructor`}
             end
             className={({ isActive }) =>
               `sd-doubtItem${isActive ? " is-active" : ""}`
@@ -185,7 +194,7 @@ export default function InstructorLayout() {
             threads.map((t) => (
               <NavLink
                 key={t.threadId}
-                to={`/instructor/${t.threadId}`}
+                to={`/course/${courseId}/instructor/${t.threadId}`}
                 className={({ isActive }) =>
                   `sd-doubtItem${isActive ? " is-active" : ""}`
                 }
@@ -210,7 +219,7 @@ export default function InstructorLayout() {
       </div>
 
       <div className="sd-chatArea">
-        <Outlet context={{ threads, user, reloadThreads }} />
+        <Outlet context={{ threads, user, reloadThreads, courseId }} />
       </div>
     </div>
   );

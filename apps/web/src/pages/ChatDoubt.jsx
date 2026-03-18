@@ -10,12 +10,15 @@ import { apiFetch } from "../lib/api";
 export default function ChatDoubt() {
   const nav = useNavigate();
   const location = useLocation();
-  const { id } = useParams();
+  const { id, courseId } = useParams();
   const { threads, user, reloadThreads } = useOutletContext();
 
   const isInstructorRoute = useMemo(() => {
     const path = String(location?.pathname || "");
-    return path.startsWith("/instructor/") && path !== "/instructor";
+    return (
+      path.startsWith(`/course/${courseId}/instructor/`) &&
+      path !== `/course/${courseId}/instructor`
+    );
   }, [location?.pathname]);
 
   const thread = useMemo(
@@ -24,6 +27,8 @@ export default function ChatDoubt() {
   );
 
   const [threadDetails, setThreadDetails] = useState(null);
+
+  const threadDetailsPath = `/threads/${id}?courseId=${courseId}`;
 
   useEffect(() => {
     if (!id) return;
@@ -38,7 +43,7 @@ export default function ChatDoubt() {
 
     (async () => {
       try {
-        const data = await apiFetch(`/threads/${id}`);
+        const data = await apiFetch(threadDetailsPath);
         if (!cancelled) setThreadDetails(data?.thread || null);
       } catch {
         // Ignore: the messages request will show the auth/forbidden error.
@@ -48,7 +53,7 @@ export default function ChatDoubt() {
     return () => {
       cancelled = true;
     };
-  }, [id, thread?.title]);
+  }, [id, thread?.title, threadDetailsPath]);
 
   const t = thread || threadDetails;
 
@@ -132,7 +137,7 @@ export default function ChatDoubt() {
   }, [user?.role, t?.taEmail]);
 
   function goBackToDashboard() {
-    nav("/instructor", { replace: false });
+    nav(`/course/${courseId}/instructor`, { replace: false });
   }
 
   useEffect(() => {
@@ -153,7 +158,7 @@ export default function ChatDoubt() {
       const nextStatus = isClosed ? "open" : "closed";
       await apiFetch(`/threads/${id}/status`, {
         method: "PATCH",
-        body: { status: nextStatus },
+        body: { status: nextStatus, courseId },
       });
       if (typeof reloadThreads === "function") {
         await reloadThreads();
@@ -185,6 +190,7 @@ export default function ChatDoubt() {
       setShowEscalateConfirm(false);
       await apiFetch(`/threads/${id}/escalate`, {
         method: "PATCH",
+        body: { courseId },
       });
       if (typeof reloadThreads === "function") {
         await reloadThreads();
@@ -207,7 +213,7 @@ export default function ChatDoubt() {
     if (!id) return;
 
     const data = await apiFetch(
-      `/threads/${id}/messages?sinceId=${lastSeenIdRef.current}`,
+      `/threads/${id}/messages?courseId=${courseId}&sinceId=${lastSeenIdRef.current}`,
     );
 
     const newOnes = Array.isArray(data?.messages) ? data.messages : [];
@@ -239,7 +245,9 @@ export default function ChatDoubt() {
         setLoading(true);
         setError("");
 
-        const data = await apiFetch(`/threads/${id}/messages`);
+        const data = await apiFetch(
+          `/threads/${id}/messages?courseId=${courseId}`,
+        );
         const list = Array.isArray(data?.messages) ? data.messages : [];
 
         if (!cancelled) {
@@ -266,7 +274,7 @@ export default function ChatDoubt() {
     return () => {
       cancelled = true;
     };
-  }, [id, nav]);
+  }, [id, nav, courseId]);
 
   // polling logic
   useEffect(() => {
@@ -302,7 +310,7 @@ export default function ChatDoubt() {
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [id, nav, loaded]);
+  }, [id, nav, loaded, courseId]);
 
   // send new messages
   async function handleSend() {
@@ -315,7 +323,7 @@ export default function ChatDoubt() {
 
       const data = await apiFetch(`/threads/${id}/messages`, {
         method: "POST",
-        body: { content },
+        body: { content, courseId },
       });
 
       const newMessage = data?.message;

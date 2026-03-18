@@ -36,11 +36,7 @@ export default function Login() {
     localStorage.setItem("ap_user", JSON.stringify(data.user));
 
     setStatus("Success");
-    if (data.user && data.user.role === "professor") {
-      nav("/instructor");
-    } else {
-      nav("/doubts");
-    }
+    nav("/courses");
   }
 
   return (

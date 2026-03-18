@@ -32,6 +32,17 @@
   box-shadow: 0 8px 26px rgba(0, 0, 0, 0.34);
 }
 
+.ap-prof-dashboard.ap-card {
+  margin-top: clamp(28px, 8vh, 84px);
+  border-radius: 2px;
+}
+
+.ap-prof-dashboard .ap-dashboard-group,
+.ap-prof-dashboard .ap-dashboard-summary,
+.ap-prof-dashboard .ap-dashboard-doubtBtn {
+  border-radius: 2px;
+}
+
 .ap-title {
   margin: 0 0 12px;
   font-size: 1.35rem;
@@ -124,6 +135,14 @@
   gap: 12px;
 }
 
+.ap-dashboard-group > summary::marker {
+  color: var(--ap-muted);
+}
+
+.ap-dashboard-group[open] > .ap-dashboard-summary {
+  background: rgba(245, 233, 218, 0.06);
+}
+
 .ap-dashboard-summaryMeta {
   color: var(--ap-muted);
   font-size: 0.82rem;
@@ -154,4 +173,29 @@
 .ap-dashboard-itemMeta {
   font-size: 0.78rem;
   color: var(--ap-muted);
+}
+
+.ap-dashboard-doubtBtn {
+  width: 100%;
+  border: 1px solid var(--ap-border-strong);
+  border-radius: 2px;
+  background: #1b1730;
+  color: var(--ap-text-soft);
+  text-align: left;
+  padding: 9px 10px;
+  margin-bottom: 7px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.ap-dashboard-doubtBtn:hover {
+  background: #241e3d;
+  border-color: var(--ap-primary-strong);
+  color: var(--ap-text);
 }

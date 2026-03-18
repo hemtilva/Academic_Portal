@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 
 export default function InstructorDashboardBlank() {
+  const { courseId } = useOutletContext();
   const nav = useNavigate();
   const [tas, setTas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [openTaId, setOpenTaId] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -15,7 +17,9 @@ export default function InstructorDashboardBlank() {
       try {
         setLoading(true);
         setError("");
-        const data = await apiFetch("/professor/ta-doubts");
+        const data = await apiFetch(
+          `/professor/ta-doubts?courseId=${courseId}`,
+        );
         const list = Array.isArray(data?.tas) ? data.tas : [];
         if (!cancelled) setTas(list);
       } catch (e) {
@@ -28,10 +32,10 @@ export default function InstructorDashboardBlank() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [courseId]);
 
   return (
-    <div className="ap-page ap-page--centered ap-card">
+    <div className="ap-page ap-card ap-prof-dashboard">
       <div className="ap-title">TA Dashboard</div>
 
       {loading ? (
@@ -43,7 +47,18 @@ export default function InstructorDashboardBlank() {
       ) : (
         <div className="ap-dashboard-list">
           {tas.map((ta) => (
-            <details key={ta.taId} className="ap-dashboard-group">
+            <details
+              key={ta.taId}
+              className="ap-dashboard-group"
+              open={openTaId === ta.taId}
+              onToggle={(e) => {
+                if (e.currentTarget.open) {
+                  setOpenTaId(ta.taId);
+                } else if (openTaId === ta.taId) {
+                  setOpenTaId(null);
+                }
+              }}
+            >
               <summary className="ap-dashboard-summary">
                 <span style={{ fontWeight: 700 }}>{ta.email}</span>
                 <span className="ap-dashboard-summaryMeta">
@@ -67,15 +82,10 @@ export default function InstructorDashboardBlank() {
                     <button
                       key={d.threadId}
                       type="button"
-                      className="sd-doubtItem"
-                      onClick={() => nav(`/instructor/${d.threadId}`)}
-                      style={{
-                        width: "100%",
-                        border: "none",
-                        background: "transparent",
-                        color: "inherit",
-                        textAlign: "left",
-                      }}
+                      className="ap-dashboard-doubtBtn"
+                      onClick={() =>
+                        nav(`/course/${courseId}/instructor/${d.threadId}`)
+                      }
                     >
                       <div className="ap-dashboard-itemMain">
                         <div className="ap-dashboard-itemTitle">
