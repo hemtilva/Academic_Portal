@@ -18,8 +18,10 @@
 
 .ap-courseHub {
   min-height: calc(100vh - 48px);
-  margin: 0 auto;
-  max-width: 980px;
+  width: 100%;
+  margin: 0;
+  max-width: none;
+  padding: 28px 24px;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -171,9 +173,33 @@
   color: var(--ap-text-soft);
 }
 
+.ap-courseHub__fab {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.ap-courseHub__fabIcon {
+  font-size: 28px;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
 @media (max-width: 720px) {
   .ap-courseHubScreen {
     padding: 12px;
+  }
+
+  .ap-courseHub {
+    padding: 18px 14px;
   }
 
   .ap-courseHub__top {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
 import "./CourseHub.css";
@@ -17,29 +17,12 @@ export default function CourseHub() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [createName, setCreateName] = useState("");
-  const [createDescription, setCreateDescription] = useState("");
-  const [creating, setCreating] = useState(false);
-
-  const [joinCode, setJoinCode] = useState("");
-  const [joining, setJoining] = useState(false);
-
   const [activeMembersCourseId, setActiveMembersCourseId] = useState(null);
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [memberEmail, setMemberEmail] = useState("");
   const [memberRole, setMemberRole] = useState("student");
   const [memberStatus, setMemberStatus] = useState("");
-
-  const canCreate = useMemo(
-    () => createName.trim().length > 0 && !creating,
-    [createName, creating],
-  );
-
-  const canJoin = useMemo(
-    () => joinCode.trim().length > 0 && !joining,
-    [joinCode, joining],
-  );
 
   async function loadCourses() {
     try {
@@ -76,63 +59,6 @@ export default function CourseHub() {
 
     loadCourses();
   }, [nav]);
-
-  async function onCreateCourse(e) {
-    e.preventDefault();
-    if (!canCreate) return;
-
-    try {
-      setCreating(true);
-      setError("");
-      const data = await apiFetch("/courses", {
-        method: "POST",
-        body: {
-          name: createName.trim(),
-          description: createDescription.trim() || null,
-        },
-      });
-
-      setCreateName("");
-      setCreateDescription("");
-
-      const createdCourseId = data?.course?.courseId;
-      await loadCourses();
-
-      if (createdCourseId) {
-        nav(`/course/${createdCourseId}/instructor`);
-      }
-    } catch (e) {
-      setError(e?.message || "Failed to create course");
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function onJoinCourse(e) {
-    e.preventDefault();
-    if (!canJoin) return;
-
-    try {
-      setJoining(true);
-      setError("");
-      const data = await apiFetch("/courses/join", {
-        method: "POST",
-        body: { joinCode: joinCode.trim().toUpperCase() },
-      });
-
-      setJoinCode("");
-      await loadCourses();
-
-      const joined = data?.course;
-      if (joined?.courseId) {
-        nav(coursePath(joined));
-      }
-    } catch (e) {
-      setError(e?.message || "Failed to join course");
-    } finally {
-      setJoining(false);
-    }
-  }
 
   function logout() {
     localStorage.removeItem("ap_token");
@@ -182,7 +108,7 @@ export default function CourseHub() {
 
   return (
     <div className="ap-courseHubScreen">
-      <div className="ap-page ap-page--centered ap-card ap-courseHub">
+      <div className="ap-card ap-courseHub">
         <div className="ap-courseHub__top">
           <div>
             <h2 className="ap-title" style={{ marginBottom: 4 }}>
@@ -196,41 +122,6 @@ export default function CourseHub() {
             Logout
           </button>
         </div>
-
-        {user?.role === "professor" ? (
-          <form className="ap-courseHub__panel" onSubmit={onCreateCourse}>
-            <div className="ap-courseHub__panelTitle">Create New Course</div>
-            <input
-              className="ap-input"
-              value={createName}
-              onChange={(e) => setCreateName(e.target.value)}
-              placeholder="Course name (e.g., CS299 AI Lab)"
-            />
-            <input
-              className="ap-input"
-              value={createDescription}
-              onChange={(e) => setCreateDescription(e.target.value)}
-              placeholder="Optional description"
-            />
-            <button type="submit" className="ap-button" disabled={!canCreate}>
-              {creating ? "Creating..." : "Create Course"}
-            </button>
-          </form>
-        ) : (
-          <form className="ap-courseHub__panel" onSubmit={onJoinCourse}>
-            <div className="ap-courseHub__panelTitle">Join a Course</div>
-            <input
-              className="ap-input ap-courseHub__codeInput"
-              value={joinCode}
-              onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-              placeholder="Enter join code"
-              maxLength={10}
-            />
-            <button type="submit" className="ap-button" disabled={!canJoin}>
-              {joining ? "Joining..." : "Join Course"}
-            </button>
-          </form>
-        )}
 
         <div className="ap-courseHub__panel">
           <div className="ap-courseHub__panelTitle">My Courses</div>
@@ -255,7 +146,9 @@ export default function CourseHub() {
 
                   <div className="ap-courseHub__courseMeta">
                     <span>Prof: {c.professorEmail || "-"}</span>
-                    <span>Code: {c.joinCode}</span>
+                    {c.role === "professor" ? (
+                      <span>Code: {c.joinCode}</span>
+                    ) : null}
                   </div>
 
                   {c.description ? (
@@ -345,6 +238,17 @@ export default function CourseHub() {
 
         {error ? <div className="ap-status is-error">{error}</div> : null}
       </div>
+
+      <button
+        type="button"
+        className="ap-button ap-courseHub__fab"
+        onClick={() => nav("/courses/access")}
+        aria-label={user?.role === "professor" ? "Create course" : "Join course"}
+      >
+        <span className="ap-courseHub__fabIcon" aria-hidden="true">
+          +
+        </span>
+      </button>
     </div>
   );
 }

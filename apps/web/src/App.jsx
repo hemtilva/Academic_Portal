@@ -4,6 +4,7 @@ import "./App.css";
 import Login from "./pages/Login.jsx";
 import Signup from "./pages/Signup.jsx";
 import CourseHub from "./pages/CourseHub.jsx";
+import CourseAccess from "./pages/CourseAccess.jsx";
 import StudentDoubts from "./pages/StudentDoubts.jsx";
 import ChatDoubt from "./pages/ChatDoubt.jsx";
 import DoubtsLayout from "./pages/DoubtsLayout.jsx";
@@ -17,6 +18,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/courses" replace />} />
         <Route path="/courses" element={<CourseHub />} />
+        <Route path="/courses/access" element={<CourseAccess />} />
         <Route path="/course/:courseId/doubts" element={<DoubtsLayout />}>
           <Route index element={<StudentDoubts />} />
           <Route path=":id" element={<ChatDoubt />} />

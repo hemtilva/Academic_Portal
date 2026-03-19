@@ -4,13 +4,14 @@ import { apiFetch } from "../lib/api";
 import "./StudentDoubts.css";
 
 export default function DoubtsLayout() {
-  const { courseId } = useParams();
+  const { courseId, id } = useParams();
   const nav = useNavigate();
   const [user, setUser] = useState(null);
   const [threads, setThreads] = useState([]);
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [threadsError, setThreadsError] = useState("");
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [showSolved, setShowSolved] = useState(false);
 
   async function reloadThreads() {
     try {
@@ -46,6 +47,14 @@ export default function DoubtsLayout() {
     reloadThreads();
   }, [nav, courseId]);
 
+  useEffect(() => {
+    if (!id) return;
+    const isViewingSolved = threads.some(
+      (t) => String(t?.threadId) === String(id) && t?.status === "closed",
+    );
+    if (isViewingSolved) setShowSolved(true);
+  }, [id, threads]);
+
   function logout(e) {
     e.preventDefault();
     setShowLogoutConfirm(true);
@@ -78,75 +87,28 @@ export default function DoubtsLayout() {
             Logout
           </button>
           {showLogoutConfirm && (
-            <div
-              style={{
-                position: "fixed",
-                top: 0,
-                left: 0,
-                width: "100vw",
-                height: "100vh",
-                background: "var(--ap-overlay)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                zIndex: 1000,
-              }}
-            >
-              <div
-                style={{
-                  background: "var(--ap-surface)",
-                  padding: "2rem",
-                  borderRadius: 12,
-                  boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
-                  minWidth: 320,
-                  textAlign: "center",
-                  color: "var(--ap-text)",
-                  border: "1px solid var(--ap-border)",
-                }}
-              >
-                <div
-                  style={{
-                    fontWeight: 700,
-                    marginBottom: 18,
-                    color: "var(--ap-text)",
-                  }}
-                >
-                  Confirm Logout
-                </div>
-                <div style={{ marginBottom: 18 }}>
+            <div className="sd-modalOverlay" role="dialog" aria-modal="true">
+              <div className="sd-modalCard">
+                <div className="sd-modalTitle">Confirm Logout</div>
+                <div className="sd-modalBody">
                   Are you sure you want to logout?
                 </div>
-                <button
-                  style={{
-                    background: "var(--ap-primary)",
-                    color: "#2e2432",
-                    fontWeight: 600,
-                    fontSize: "1em",
-                    padding: "0.6em 1.2em",
-                    borderRadius: 8,
-                    border: "1px solid var(--ap-primary-strong)",
-                    marginRight: 12,
-                    cursor: "pointer",
-                  }}
-                  onClick={confirmLogout}
-                >
-                  Yes, Logout
-                </button>
-                <button
-                  style={{
-                    background: "transparent",
-                    color: "var(--ap-text)",
-                    fontWeight: 600,
-                    fontSize: "1em",
-                    padding: "0.6em 1.2em",
-                    borderRadius: 8,
-                    border: "1px solid var(--ap-border-strong)",
-                    cursor: "pointer",
-                  }}
-                  onClick={cancelLogout}
-                >
-                  Cancel
-                </button>
+                <div className="sd-modalActions">
+                  <button
+                    type="button"
+                    className="sd-modalBtn is-primary"
+                    onClick={confirmLogout}
+                  >
+                    Yes, Logout
+                  </button>
+                  <button
+                    type="button"
+                    className="sd-modalBtn is-accent"
+                    onClick={cancelLogout}
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -158,29 +120,69 @@ export default function DoubtsLayout() {
           ) : threadsError ? (
             <div style={{ padding: 12 }}>{threadsError}</div>
           ) : (
-            threads.map((t) => (
-              <NavLink
-                key={t.threadId}
-                to={`/course/${courseId}/doubts/${t.threadId}`}
-                className={({ isActive }) =>
-                  `sd-doubtItem${isActive ? " is-active" : ""}`
-                }
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <span>
-                  #{t.threadId} - {t.title}
-                </span>
-                <div
-                  className={`sd-status ${
-                    t.isEscalatedToProfessor
-                      ? "escalated"
-                      : t.status === "closed"
-                        ? "resolved"
-                        : "unresolved"
-                  }`}
-                />
-              </NavLink>
-            ))
+            (() => {
+              const unsolvedThreads = threads.filter((t) => t?.status !== "closed");
+              const solvedThreads = threads.filter((t) => t?.status === "closed");
+
+              return (
+                <>
+                  {unsolvedThreads.map((t) => (
+                    <NavLink
+                      key={t.threadId}
+                      to={`/course/${courseId}/doubts/${t.threadId}`}
+                      className={({ isActive }) =>
+                        `sd-doubtItem${isActive ? " is-active" : ""}`
+                      }
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      <span>
+                        #{t.threadId} - {t.title}
+                      </span>
+                      <div
+                        className={`sd-status ${
+                          t.isEscalatedToProfessor
+                            ? "escalated"
+                            : t.status === "closed"
+                              ? "resolved"
+                              : "unresolved"
+                        }`}
+                      />
+                    </NavLink>
+                  ))}
+
+                  {solvedThreads.length > 0 ? (
+                    <button
+                      type="button"
+                      className={`sd-doubtItem sd-solvedToggle${showSolved ? " is-open" : ""}`}
+                      onClick={() => setShowSolved((v) => !v)}
+                    >
+                      <span>Solved ({solvedThreads.length})</span>
+                      <span className="sd-solvedChevron" aria-hidden="true">
+                        {showSolved ? "▾" : "▸"}
+                      </span>
+                    </button>
+                  ) : null}
+
+                  {showSolved
+                    ? solvedThreads.map((t) => (
+                        <NavLink
+                          key={t.threadId}
+                          to={`/course/${courseId}/doubts/${t.threadId}`}
+                          className={({ isActive }) =>
+                            `sd-doubtItem sd-doubtItem--solved${isActive ? " is-active" : ""}`
+                          }
+                          style={{ textDecoration: "none", color: "inherit" }}
+                        >
+                          <span>
+                            #{t.threadId} - {t.title}
+                          </span>
+                          <div className="sd-status resolved" />
+                        </NavLink>
+                      ))
+                    : null}
+                </>
+              );
+            })()
           )}
         </div>
 

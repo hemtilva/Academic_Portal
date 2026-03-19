@@ -56,11 +56,22 @@ CREATE TABLE IF NOT EXISTS messages (
   thread_id   INTEGER NOT NULL REFERENCES threads(thread_id) ON DELETE CASCADE,
   sender_id   INTEGER NOT NULL REFERENCES users(user_id),
   content     TEXT NOT NULL,
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  edited_at   TIMESTAMPTZ,
+  deleted_at  TIMESTAMPTZ
 );
+
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ;
+
+ALTER TABLE messages
+  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS messages_thread_id_message_id_idx
   ON messages(thread_id, message_id);
 
 CREATE INDEX IF NOT EXISTS messages_sender_id_idx ON messages(sender_id);
 CREATE INDEX IF NOT EXISTS messages_created_at_idx ON messages(created_at);
+
+CREATE INDEX IF NOT EXISTS messages_thread_id_deleted_at_idx
+  ON messages(thread_id, deleted_at);

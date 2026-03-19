@@ -7,7 +7,7 @@ dotenv.config();
 const {
   pool,
   testDbConnection,
-  ensureEscalationColumns,
+  ensureMessageColumns,
 } = require("./config/db");
 const {
   isValidRole,
@@ -79,8 +79,11 @@ app.use(
   }),
 );
 
-testDbConnection();
+(async () => {
+  await testDbConnection();
+  await ensureMessageColumns();
 
-app.listen(PORT, () => {
-  console.log(`API listening on http://localhost:${PORT}`);
-});
+  app.listen(PORT, () => {
+    console.log(`API listening on http://localhost:${PORT}`);
+  });
+})();

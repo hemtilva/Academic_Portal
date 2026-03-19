@@ -369,7 +369,7 @@ function createThreadsRouter({
       }
 
       const result = await pool.query(
-        `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, u.email, u.role
+        `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, m.edited_at, m.deleted_at, u.email, u.role
          FROM messages m
          JOIN users u ON u.user_id = m.sender_id
          WHERE m.thread_id = $1 AND m.message_id > $2
@@ -387,6 +387,8 @@ function createThreadsRouter({
           senderRole: r.role,
           content: r.content,
           createdAt: r.created_at,
+          editedAt: r.edited_at,
+          deletedAt: r.deleted_at,
         })),
       });
     } catch (err) {
@@ -451,14 +453,14 @@ function createThreadsRouter({
       const inserted = await pool.query(
         `INSERT INTO messages (thread_id, sender_id, content)
          VALUES ($1, $2, $3)
-         RETURNING message_id, thread_id, sender_id, content, created_at`,
+         RETURNING message_id, thread_id, sender_id, content, created_at, edited_at, deleted_at`,
         [threadId, auth.userId, content],
       );
 
       const m = inserted.rows[0];
 
       const enriched = await pool.query(
-        `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, u.email, u.role
+        `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, m.edited_at, m.deleted_at, u.email, u.role
          FROM messages m
          JOIN users u ON u.user_id = m.sender_id
          WHERE m.message_id = $1
@@ -476,6 +478,8 @@ function createThreadsRouter({
           senderRole: r?.role,
           content: r?.content ?? m.content,
           createdAt: r?.created_at ?? m.created_at,
+          editedAt: r?.edited_at ?? m.edited_at,
+          deletedAt: r?.deleted_at ?? m.deleted_at,
         },
       });
     } catch (err) {
@@ -483,6 +487,231 @@ function createThreadsRouter({
       return res.status(500).json({ error: "Failed to post thread message" });
     }
   });
+
+  router.patch(
+    "/threads/:threadId/messages/:messageId",
+    requireAuth,
+    async (req, res) => {
+      const auth = getAuthContext(req, res);
+      if (!auth) return;
+
+      const courseCtx = await requireCourseMember(pool, req, res, auth);
+      if (!courseCtx) return;
+
+      const threadId = Number(req.params.threadId);
+      const messageId = Number(req.params.messageId);
+      if (!Number.isInteger(threadId) || threadId <= 0) {
+        return res
+          .status(400)
+          .json({ error: "threadId must be a positive integer" });
+      }
+      if (!Number.isInteger(messageId) || messageId <= 0) {
+        return res
+          .status(400)
+          .json({ error: "messageId must be a positive integer" });
+      }
+
+      const raw =
+        typeof req.body?.content === "string"
+          ? req.body.content
+          : typeof req.body?.text === "string"
+            ? req.body.text
+            : "";
+
+      const content = String(raw).trim();
+      if (content.length === 0) {
+        return res.status(400).json({ error: "content is required" });
+      }
+
+      try {
+        const threadResult = await pool.query(
+          "SELECT thread_id, course_id, student_id, ta_id, status, COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
+          [threadId, courseCtx.courseId],
+        );
+
+        if (threadResult.rows.length === 0) {
+          return res.status(404).json({ error: "Thread not found" });
+        }
+
+        const thread = threadResult.rows[0];
+        const allowed =
+          (courseCtx.role === "student" && thread.student_id === auth.userId) ||
+          (courseCtx.role === "ta" &&
+            thread.ta_id === auth.userId &&
+            thread.is_escalated_to_professor !== true) ||
+          (courseCtx.role === "professor" &&
+            thread.is_escalated_to_professor === true);
+
+        if (!allowed) {
+          return res.status(403).json({ error: "Forbidden" });
+        }
+
+        if (thread.status === "closed") {
+          return res.status(403).json({ error: "Thread is closed" });
+        }
+
+        const updated = await pool.query(
+          `UPDATE messages
+             SET content = $1, edited_at = NOW()
+             WHERE message_id = $2 AND thread_id = $3 AND sender_id = $4 AND deleted_at IS NULL
+             RETURNING message_id, thread_id, sender_id, content, created_at, edited_at, deleted_at`,
+          [content, messageId, threadId, auth.userId],
+        );
+
+        if (updated.rows.length === 0) {
+          const exists = await pool.query(
+            "SELECT message_id, sender_id FROM messages WHERE message_id = $1 AND thread_id = $2 LIMIT 1",
+            [messageId, threadId],
+          );
+          if (exists.rows.length === 0) {
+            return res.status(404).json({ error: "Message not found" });
+          }
+          return res.status(403).json({ error: "Forbidden" });
+        }
+
+        const m = updated.rows[0];
+        const enriched = await pool.query(
+          `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, m.edited_at, m.deleted_at, u.email, u.role
+           FROM messages m
+           JOIN users u ON u.user_id = m.sender_id
+           WHERE m.message_id = $1
+           LIMIT 1`,
+          [m.message_id],
+        );
+
+        const r = enriched.rows[0] || null;
+        return res.json({
+          message: {
+            messageId: r?.message_id ?? m.message_id,
+            threadId: r?.thread_id ?? m.thread_id,
+            senderId: r?.sender_id ?? m.sender_id,
+            senderEmail: r?.email,
+            senderRole: r?.role,
+            content: r?.content ?? m.content,
+            createdAt: r?.created_at ?? m.created_at,
+            editedAt: r?.edited_at ?? m.edited_at,
+            deletedAt: r?.deleted_at ?? m.deleted_at,
+          },
+        });
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Failed to update message" });
+      }
+    },
+  );
+
+  router.delete(
+    "/threads/:threadId/messages/:messageId",
+    requireAuth,
+    async (req, res) => {
+      const auth = getAuthContext(req, res);
+      if (!auth) return;
+
+      const courseCtx = await requireCourseMember(pool, req, res, auth);
+      if (!courseCtx) return;
+
+      const threadId = Number(req.params.threadId);
+      const messageId = Number(req.params.messageId);
+      if (!Number.isInteger(threadId) || threadId <= 0) {
+        return res
+          .status(400)
+          .json({ error: "threadId must be a positive integer" });
+      }
+      if (!Number.isInteger(messageId) || messageId <= 0) {
+        return res
+          .status(400)
+          .json({ error: "messageId must be a positive integer" });
+      }
+
+      try {
+        const threadResult = await pool.query(
+          "SELECT thread_id, course_id, student_id, ta_id, status, COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
+          [threadId, courseCtx.courseId],
+        );
+
+        if (threadResult.rows.length === 0) {
+          return res.status(404).json({ error: "Thread not found" });
+        }
+
+        const thread = threadResult.rows[0];
+        const allowed =
+          (courseCtx.role === "student" && thread.student_id === auth.userId) ||
+          (courseCtx.role === "ta" &&
+            thread.ta_id === auth.userId &&
+            thread.is_escalated_to_professor !== true) ||
+          (courseCtx.role === "professor" &&
+            thread.is_escalated_to_professor === true);
+
+        if (!allowed) {
+          return res.status(403).json({ error: "Forbidden" });
+        }
+
+        if (thread.status === "closed") {
+          return res.status(403).json({ error: "Thread is closed" });
+        }
+
+        const deleted = await pool.query(
+          `UPDATE messages
+           SET deleted_at = NOW(), content = ''
+           WHERE message_id = $1 AND thread_id = $2 AND sender_id = $3 AND deleted_at IS NULL
+           RETURNING message_id, thread_id, sender_id, content, created_at, edited_at, deleted_at`,
+          [messageId, threadId, auth.userId],
+        );
+
+        if (deleted.rows.length === 0) {
+          const exists = await pool.query(
+            "SELECT message_id, sender_id FROM messages WHERE message_id = $1 AND thread_id = $2 LIMIT 1",
+            [messageId, threadId],
+          );
+          if (exists.rows.length === 0) {
+            return res.status(404).json({ error: "Message not found" });
+          }
+          return res.status(403).json({ error: "Forbidden" });
+        }
+
+        const remaining = await pool.query(
+          "SELECT COUNT(1) AS cnt FROM messages WHERE thread_id = $1 AND deleted_at IS NULL",
+          [threadId],
+        );
+
+        const remainingCount = Number(remaining.rows?.[0]?.cnt) || 0;
+        if (remainingCount === 0) {
+          await pool.query("DELETE FROM threads WHERE thread_id = $1", [threadId]);
+          return res.json({ ok: true, threadDeleted: true, threadId });
+        }
+
+        const m = deleted.rows[0];
+        const enriched = await pool.query(
+          `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, m.edited_at, m.deleted_at, u.email, u.role
+           FROM messages m
+           JOIN users u ON u.user_id = m.sender_id
+           WHERE m.message_id = $1
+           LIMIT 1`,
+          [m.message_id],
+        );
+
+        const r = enriched.rows[0] || null;
+        return res.json({
+          ok: true,
+          threadDeleted: false,
+          message: {
+            messageId: r?.message_id ?? m.message_id,
+            threadId: r?.thread_id ?? m.thread_id,
+            senderId: r?.sender_id ?? m.sender_id,
+            senderEmail: r?.email,
+            senderRole: r?.role,
+            content: r?.content ?? m.content,
+            createdAt: r?.created_at ?? m.created_at,
+            editedAt: r?.edited_at ?? m.edited_at,
+            deletedAt: r?.deleted_at ?? m.deleted_at,
+          },
+        });
+      } catch (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Failed to delete message" });
+      }
+    },
+  );
 
   return router;
 }

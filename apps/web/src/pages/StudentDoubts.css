@@ -75,6 +75,7 @@
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  min-width: 0;
   border: 0;
   border-radius: 8px;
   background: transparent;
@@ -87,6 +88,14 @@
     color 120ms ease;
 }
 
+.sd-doubtItem > span:first-child {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .sd-doubtItem:hover {
   background: rgba(245, 233, 218, 0.1);
   color: var(--ap-text);
@@ -95,6 +104,25 @@
 .sd-doubtItem.is-active {
   background: rgba(245, 233, 218, 0.18);
   color: var(--ap-text);
+}
+
+.sd-solvedToggle {
+  border: 1px solid var(--ap-border);
+  margin-top: 10px;
+}
+
+.sd-solvedToggle.is-open {
+  background: rgba(245, 233, 218, 0.1);
+  color: var(--ap-text);
+}
+
+.sd-solvedChevron {
+  color: var(--ap-muted);
+  font-size: 0.95rem;
+}
+
+.sd-doubtItem--solved {
+  padding-left: 18px;
 }
 
 .sd-status {
@@ -136,6 +164,107 @@
 
 .sd-composeBtn:hover {
   background: var(--ap-primary-strong);
+}
+
+.sd-modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--ap-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.sd-modalCard {
+  background: #120f22;
+  padding: 22px 20px;
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  min-width: 320px;
+  text-align: center;
+  color: var(--ap-text);
+  border: 1px solid var(--ap-border);
+}
+
+.sd-modalTitle {
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--ap-text);
+}
+
+.sd-modalBody {
+  margin-bottom: 16px;
+  color: var(--ap-text-soft);
+}
+
+.sd-modalActions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.sd-modalBtn {
+  border: 1px solid var(--ap-border-strong);
+  border-radius: 8px;
+  background: var(--ap-surface);
+  color: var(--ap-primary);
+  font: inherit;
+  font-weight: 600;
+  font-size: 1em;
+  padding: 0.6em 1.2em;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.sd-modalBtn.is-primary {
+  border-color: var(--ap-primary-strong);
+}
+
+.sd-modalBtn.is-primary:hover {
+  background: var(--ap-primary);
+  color: #2e2432;
+  border-color: var(--ap-primary-strong);
+}
+
+.sd-modalBtn.is-accent {
+  border-color: var(--ap-primary-strong);
+}
+
+.sd-modalBtn.is-accent:hover {
+  background: var(--ap-primary);
+  border-color: var(--ap-primary-strong);
+  color: #2e2432;
+}
+
+.sd-modalBtn.is-accent:focus,
+.sd-modalBtn.is-accent:focus-visible,
+.sd-modalBtn.is-accent:active {
+  background: var(--ap-primary);
+  border-color: var(--ap-primary-strong);
+  color: #2e2432;
+}
+
+.sd-modalBtn.is-primary:focus,
+.sd-modalBtn.is-primary:focus-visible,
+.sd-modalBtn.is-primary:active {
+  background: var(--ap-primary);
+  color: #2e2432;
+  border-color: var(--ap-primary-strong);
+}
+
+.sd-modalBtn:focus {
+  outline: none;
 }
 
 .sd-chatArea {
@@ -227,19 +356,24 @@
 .cd-titlebar__action {
   border: 1px solid var(--ap-border-strong);
   border-radius: 8px;
-  background: #2a2140;
-  color: var(--ap-text-soft);
+  background: var(--ap-surface);
+  color: var(--ap-primary);
   font: inherit;
   font-size: 0.82rem;
   font-weight: 600;
   padding: 5px 9px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
 }
 
 .cd-backBtn:hover,
 .cd-titlebar__action:hover {
-  background: #352950;
-  color: var(--ap-text);
+  background: var(--ap-primary);
+  border-color: var(--ap-primary-strong);
+  color: #2e2432;
 }
 
 .cd-titlebar__action.is-closed {
@@ -248,6 +382,11 @@
 
 .cd-titlebar__action.is-open {
   color: #ea7f7f;
+}
+
+.cd-titlebar__action.is-closed:hover,
+.cd-titlebar__action.is-open:hover {
+  color: #2e2432;
 }
 
 .cd-titlebar__action:disabled,

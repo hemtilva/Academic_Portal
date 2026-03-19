@@ -84,8 +84,48 @@ export default function ChatDoubt() {
   const [escalating, setEscalating] = useState(false);
   const [showSolvedConfirm, setShowSolvedConfirm] = useState(false);
   const [showEscalateConfirm, setShowEscalateConfirm] = useState(false);
+  const [contextMenu, setContextMenu] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editDraft, setEditDraft] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingMessage, setDeletingMessage] = useState(false);
   const lastSeenIdRef = useRef(0);
   const bottomRef = useRef(null);
+
+  useEffect(() => {
+    // Reset transient UI when switching threads.
+    setContextMenu(null);
+    setSelectedMessage(null);
+    setShowEditModal(false);
+    setShowDeleteConfirm(false);
+    setEditDraft("");
+  }, [id]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    function onKeyDown(e) {
+      if (e.key === "Escape") setContextMenu(null);
+    }
+
+    function onOutsideClick() {
+      setContextMenu(null);
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("mousedown", onOutsideClick);
+    window.addEventListener("scroll", onOutsideClick, true);
+    window.addEventListener("resize", onOutsideClick);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("mousedown", onOutsideClick);
+      window.removeEventListener("scroll", onOutsideClick, true);
+      window.removeEventListener("resize", onOutsideClick);
+    };
+  }, [contextMenu]);
 
   const firstProfessorMessage = useMemo(() => {
     if (!t?.isEscalatedToProfessor) return null;
@@ -138,6 +178,17 @@ export default function ChatDoubt() {
 
   function goBackToDashboard() {
     nav(`/course/${courseId}/instructor`, { replace: false });
+  }
+
+  function formatMessageTime(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return "";
+    try {
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    } catch {
+      return d.toLocaleTimeString();
+    }
   }
 
   useEffect(() => {
@@ -207,6 +258,139 @@ export default function ChatDoubt() {
   }
   function cancelEscalateToProfessor() {
     setShowEscalateConfirm(false);
+  }
+
+  function openContextMenu(e, msg) {
+    if (!msg) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    setSelectedMessage(msg);
+
+    const menuWidth = 160;
+    const menuHeight = 88;
+    const maxX = Math.max(8, (window.innerWidth || 0) - menuWidth - 8);
+    const maxY = Math.max(8, (window.innerHeight || 0) - menuHeight - 8);
+    const x = Math.min(Math.max(8, e.clientX), maxX);
+    const y = Math.min(Math.max(8, e.clientY), maxY);
+
+    setContextMenu({ x, y });
+  }
+
+  function startEditSelectedMessage() {
+    if (!selectedMessage) return;
+    setEditDraft(String(selectedMessage.content || ""));
+    setShowEditModal(true);
+    setContextMenu(null);
+  }
+
+  async function confirmEditSelectedMessage() {
+    if (!id || !selectedMessage?.messageId) return;
+    if (isClosed) return;
+
+    try {
+      setSavingEdit(true);
+      setError("");
+
+      const data = await apiFetch(
+        `/threads/${id}/messages/${selectedMessage.messageId}?courseId=${courseId}`,
+        {
+          method: "PATCH",
+          body: { content: editDraft, courseId },
+        },
+      );
+
+      const updated = data?.message;
+      if (updated?.messageId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m.messageId) === String(updated.messageId) ? updated : m,
+          ),
+        );
+        setSelectedMessage(updated);
+      }
+
+      setShowEditModal(false);
+    } catch (e) {
+      const msg = e?.message || "Failed to edit message";
+      setError(msg);
+      if (String(msg).toLowerCase().includes("unauthorized")) {
+        nav("/login", { replace: true });
+      }
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  function cancelEditSelectedMessage() {
+    setShowEditModal(false);
+  }
+
+  function startDeleteSelectedMessage() {
+    if (!selectedMessage) return;
+    setShowDeleteConfirm(true);
+    setContextMenu(null);
+  }
+
+  async function confirmDeleteSelectedMessage() {
+    if (!id || !selectedMessage?.messageId) return;
+    if (isClosed) return;
+
+    try {
+      setDeletingMessage(true);
+      setError("");
+
+      const data = await apiFetch(
+        `/threads/${id}/messages/${selectedMessage.messageId}?courseId=${courseId}`,
+        { method: "DELETE" },
+      );
+
+      if (data?.threadDeleted) {
+        setShowDeleteConfirm(false);
+        setSelectedMessage(null);
+        if (typeof reloadThreads === "function") {
+          await reloadThreads();
+        }
+        if (isInstructorRoute) {
+          nav(`/course/${courseId}/instructor`, { replace: true });
+        } else {
+          nav(`/course/${courseId}/doubts`, { replace: true });
+        }
+        return;
+      }
+
+      const deletedMessage = data?.message;
+      if (deletedMessage?.messageId) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            String(m.messageId) === String(deletedMessage.messageId)
+              ? deletedMessage
+              : m,
+          ),
+        );
+      } else {
+        // Fallback: remove from UI if API didn't return the updated row.
+        setMessages((prev) =>
+          prev.filter(
+            (m) => String(m.messageId) !== String(selectedMessage.messageId),
+          ),
+        );
+      }
+      setShowDeleteConfirm(false);
+      setSelectedMessage(null);
+    } catch (e) {
+      const msg = e?.message || "Failed to delete message";
+      setError(msg);
+      if (String(msg).toLowerCase().includes("unauthorized")) {
+        nav("/login", { replace: true });
+      }
+    } finally {
+      setDeletingMessage(false);
+    }
+  }
+
+  function cancelDeleteSelectedMessage() {
+    setShowDeleteConfirm(false);
   }
 
   async function fetchNewMessages() {
@@ -385,76 +569,29 @@ export default function ChatDoubt() {
                 {isClosed ? "Solved" : "Unsolved"}
               </button>
               {showSolvedConfirm && (
-                <div
-                  style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    width: "100vw",
-                    height: "100vh",
-                    background: "var(--ap-overlay)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 1000,
-                  }}
-                >
-                  <div
-                    style={{
-                      background: "var(--ap-surface)",
-                      padding: "2rem",
-                      borderRadius: 12,
-                      boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
-                      minWidth: 320,
-                      textAlign: "center",
-                      color: "var(--ap-text)",
-                      border: "1px solid var(--ap-border)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        marginBottom: 18,
-                        color: "var(--ap-text)",
-                      }}
-                    >
-                      Confirm Status Change
-                    </div>
-                    <div style={{ marginBottom: 18 }}>
+                <div className="sd-modalOverlay" role="dialog" aria-modal="true">
+                  <div className="sd-modalCard">
+                    <div className="sd-modalTitle">Confirm Status Change</div>
+                    <div className="sd-modalBody">
                       Are you sure you want to mark this doubt as{" "}
                       {isClosed ? "unsolved" : "solved"}?
                     </div>
-                    <button
-                      style={{
-                        background: "var(--ap-primary)",
-                        color: "#2e2432",
-                        fontWeight: 600,
-                        fontSize: "1em",
-                        padding: "0.6em 1.2em",
-                        borderRadius: 8,
-                        border: "1px solid var(--ap-primary-strong)",
-                        marginRight: 12,
-                        cursor: "pointer",
-                      }}
-                      onClick={confirmToggleSolved}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      style={{
-                        background: "transparent",
-                        color: "var(--ap-text)",
-                        fontWeight: 600,
-                        fontSize: "1em",
-                        padding: "0.6em 1.2em",
-                        borderRadius: 8,
-                        border: "1px solid var(--ap-border-strong)",
-                        cursor: "pointer",
-                      }}
-                      onClick={cancelToggleSolved}
-                    >
-                      Cancel
-                    </button>
+                    <div className="sd-modalActions">
+                      <button
+                        type="button"
+                        className="sd-modalBtn is-primary"
+                        onClick={confirmToggleSolved}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        className="sd-modalBtn is-accent"
+                        onClick={cancelToggleSolved}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -474,42 +611,10 @@ export default function ChatDoubt() {
                 {t?.isEscalatedToProfessor ? "Escalated" : "Escalate"}
               </button>
               {showEscalateConfirm && (
-                <div
-                  style={{
-                    position: "fixed",
-                    top: 0,
-                    left: 0,
-                    width: "100vw",
-                    height: "100vh",
-                    background: "var(--ap-overlay)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 1000,
-                  }}
-                >
-                  <div
-                    style={{
-                      background: "var(--ap-surface)",
-                      padding: "2rem",
-                      borderRadius: 12,
-                      boxShadow: "0 8px 28px rgba(0,0,0,0.4)",
-                      minWidth: 320,
-                      textAlign: "center",
-                      color: "var(--ap-text)",
-                      border: "1px solid var(--ap-border)",
-                    }}
-                  >
-                    <div
-                      style={{
-                        fontWeight: 700,
-                        marginBottom: 18,
-                        color: "var(--ap-text)",
-                      }}
-                    >
-                      Confirm Escalation
-                    </div>
-                    <div style={{ marginBottom: 18 }}>
+                <div className="sd-modalOverlay" role="dialog" aria-modal="true">
+                  <div className="sd-modalCard">
+                    <div className="sd-modalTitle">Confirm Escalation</div>
+                    <div className="sd-modalBody">
                       Are you sure you want to escalate this doubt to the
                       professor?
                       <div
@@ -522,37 +627,22 @@ export default function ChatDoubt() {
                         This will hand off the doubt to the professor.
                       </div>
                     </div>
-                    <button
-                      style={{
-                        background: "var(--ap-primary)",
-                        color: "#2e2432",
-                        fontWeight: 600,
-                        fontSize: "1em",
-                        padding: "0.6em 1.2em",
-                        borderRadius: 8,
-                        border: "1px solid var(--ap-primary-strong)",
-                        marginRight: 12,
-                        cursor: "pointer",
-                      }}
-                      onClick={confirmEscalateToProfessor}
-                    >
-                      Yes
-                    </button>
-                    <button
-                      style={{
-                        background: "transparent",
-                        color: "var(--ap-text)",
-                        fontWeight: 600,
-                        fontSize: "1em",
-                        padding: "0.6em 1.2em",
-                        borderRadius: 8,
-                        border: "1px solid var(--ap-border-strong)",
-                        cursor: "pointer",
-                      }}
-                      onClick={cancelEscalateToProfessor}
-                    >
-                      Cancel
-                    </button>
+                    <div className="sd-modalActions">
+                      <button
+                        type="button"
+                        className="sd-modalBtn is-primary"
+                        onClick={confirmEscalateToProfessor}
+                      >
+                        Yes
+                      </button>
+                      <button
+                        type="button"
+                        className="sd-modalBtn is-accent"
+                        onClick={cancelEscalateToProfessor}
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -585,6 +675,19 @@ export default function ChatDoubt() {
               user?.role === "professor"
                 ? senderId === taId || senderId === viewerId
                 : senderId === viewerId;
+
+            const canModifyMessage =
+              !isClosed && senderId === viewerId && !loading && !msg?.deletedAt;
+
+            const showEdited = !!msg?.editedAt && !msg?.deletedAt;
+            const showDeleted = !!msg?.deletedAt;
+
+            const messageTime = formatMessageTime(msg?.createdAt);
+            const watermarkText = showDeleted
+              ? "deleted"
+              : showEdited
+                ? "edited"
+                : "";
 
             const showProfessorDivider =
               !!firstProfessorMessageId &&
@@ -644,8 +747,34 @@ export default function ChatDoubt() {
                     maxWidth: "70%",
                     alignSelf: isUser ? "flex-end" : "flex-start",
                   }}
+                  onContextMenu={
+                    canModifyMessage ? (e) => openContextMenu(e, msg) : undefined
+                  }
                 >
-                  {msg.content}
+                  <div style={{ whiteSpace: "pre-wrap" }}>
+                    {showDeleted ? (
+                      <span style={{ color: "var(--ap-muted)", fontStyle: "italic" }}>
+                        Message deleted
+                      </span>
+                    ) : (
+                      msg.content
+                    )}
+                  </div>
+
+                  {messageTime ? (
+                    <div
+                      style={{
+                        marginTop: 2,
+                        fontSize: 9,
+                        lineHeight: 1.1,
+                        color: "var(--ap-muted)",
+                        textAlign: "right",
+                      }}
+                      title={msg?.createdAt}
+                    >
+                      {watermarkText ? `${watermarkText} • ${messageTime}` : messageTime}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             );
@@ -653,6 +782,130 @@ export default function ChatDoubt() {
         )}
         <div ref={bottomRef} />
       </div>
+
+      {contextMenu && selectedMessage ? (
+        <div
+          role="menu"
+          aria-label="Message actions"
+          style={{
+            position: "fixed",
+            top: contextMenu.y,
+            left: contextMenu.x,
+            width: 160,
+            background: "var(--ap-surface)",
+            border: "1px solid var(--ap-border)",
+            borderRadius: 10,
+            padding: 6,
+            zIndex: 9999,
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            onClick={startEditSelectedMessage}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              padding: "10px 10px",
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              color: "var(--ap-text)",
+              cursor: "pointer",
+            }}
+          >
+            Edit
+          </button>
+          <button
+            type="button"
+            onClick={startDeleteSelectedMessage}
+            style={{
+              width: "100%",
+              textAlign: "left",
+              padding: "10px 10px",
+              borderRadius: 8,
+              border: "none",
+              background: "transparent",
+              color: "var(--ap-danger)",
+              cursor: "pointer",
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      ) : null}
+
+      {showEditModal ? (
+        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
+          <div className="sd-modalCard">
+            <div className="sd-modalTitle">Edit message</div>
+            <div className="sd-modalBody">
+              <textarea
+                value={editDraft}
+                onChange={(e) => setEditDraft(e.target.value)}
+                rows={4}
+                style={{
+                  width: "100%",
+                  resize: "vertical",
+                  background: "var(--ap-input-bg)",
+                  color: "var(--ap-text)",
+                  border: "1px solid var(--ap-border)",
+                  borderRadius: 10,
+                  padding: 10,
+                  fontFamily: "inherit",
+                }}
+              />
+            </div>
+            <div className="sd-modalActions">
+              <button
+                type="button"
+                className="sd-modalBtn is-primary"
+                onClick={confirmEditSelectedMessage}
+                disabled={savingEdit}
+              >
+                Save
+              </button>
+              <button
+                type="button"
+                className="sd-modalBtn is-accent"
+                onClick={cancelEditSelectedMessage}
+                disabled={savingEdit}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showDeleteConfirm ? (
+        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
+          <div className="sd-modalCard">
+            <div className="sd-modalTitle">Delete message</div>
+            <div className="sd-modalBody">
+              Are you sure you want to delete this message?
+            </div>
+            <div className="sd-modalActions">
+              <button
+                type="button"
+                className="sd-modalBtn is-primary"
+                onClick={confirmDeleteSelectedMessage}
+                disabled={deletingMessage}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                className="sd-modalBtn is-accent"
+                onClick={cancelDeleteSelectedMessage}
+                disabled={deletingMessage}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="chat-input-area">
         <input

@@ -25,7 +25,22 @@ async function testDbConnection() {
   }
 }
 
+async function ensureMessageColumns() {
+  try {
+    await pool.query(
+      "ALTER TABLE messages ADD COLUMN IF NOT EXISTS edited_at TIMESTAMPTZ",
+    );
+    await pool.query(
+      "ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ",
+    );
+  } catch (err) {
+    // If messages table doesn't exist yet, ignore (schema.sql will create it).
+    console.error("Failed ensuring message columns:", err);
+  }
+}
+
 module.exports = {
   pool,
   testDbConnection,
+  ensureMessageColumns,
 };
