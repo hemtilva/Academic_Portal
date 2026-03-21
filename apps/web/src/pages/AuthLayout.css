@@ -2,7 +2,6 @@
 body {
   background: var(--ap-bg);
 }
-@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap");
 
 .ap-auth {
   position: fixed;
@@ -10,14 +9,10 @@ body {
   display: grid;
   grid-template-columns: 30% 70%;
   background:
-    radial-gradient(
-      circle at 0% 0%,
-      rgba(176, 127, 153, 0.16),
-      transparent 34%
-    ),
+    radial-gradient(circle at 0% 0%, rgba(224, 122, 95, 0.2), transparent 34%),
     radial-gradient(
       circle at 100% 100%,
-      rgba(245, 233, 218, 0.1),
+      rgba(255, 180, 161, 0.1),
       transparent 32%
     ),
     var(--ap-bg);
@@ -27,7 +22,7 @@ body {
 .ap-auth__art {
   position: relative;
   overflow: hidden;
-  background: #171327;
+  background: var(--ap-surface);
   border-right: 1px solid var(--ap-border);
 }
 .ap-auth__doodle {
@@ -58,7 +53,7 @@ body {
 .ap-auth__title {
   margin: 0 0 24px 0;
   text-align: center;
-  font-family: "Sora", sans-serif;
+  font-family: "Epilogue", sans-serif;
   font-size: clamp(56px, 6vw, 84px);
   line-height: 1.1;
   letter-spacing: 0.06em;
@@ -96,7 +91,7 @@ body {
 
 .ap-auth__input:focus {
   border-color: var(--ap-accent);
-  box-shadow: 0 0 0 3px rgba(176, 127, 153, 0.24);
+  box-shadow: 0 0 0 3px var(--ap-focus-ring);
 }
 
 .ap-auth__roleGroup {
@@ -111,7 +106,7 @@ body {
   border-radius: 999px;
   border: 1px solid var(--ap-primary-strong);
   background: var(--ap-primary);
-  color: #2e2432;
+  color: var(--ap-on-primary);
   cursor: pointer;
   font-size: 14px;
   line-height: 1.2;
@@ -175,15 +170,19 @@ body {
   padding: 10px 22px;
   border-radius: 999px;
   border: 1px solid var(--ap-primary-strong);
-  background: var(--ap-primary);
-  color: #2e2432;
+  background: linear-gradient(
+    135deg,
+    var(--ap-primary) 0%,
+    var(--ap-primary-strong) 100%
+  );
+  color: var(--ap-on-primary);
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
 }
 
 .ap-auth__button:hover {
-  background: var(--ap-primary-strong);
+  filter: brightness(1.03);
 }
 
 .ap-auth__button:disabled {

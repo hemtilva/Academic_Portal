@@ -1,24 +1,30 @@
-@import url("https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700;800;900&family=Manrope:wght@400;500;600;700&display=swap");
 
 :root {
-  --ap-bg: #0c0b14;
-  --ap-surface: #141225;
-  --ap-surface-2: #211b34;
-  --ap-input-bg: #1a1530;
-  --ap-border: #342d4d;
-  --ap-border-strong: #5f4f74;
-  --ap-text: #ece7f8;
-  --ap-text-soft: #d5cde8;
-  --ap-muted: #a79abb;
+  --ap-bg: #1a1c1f;
+  --ap-surface: #111316;
+  --ap-surface-2: #1e2023;
+  --ap-surface-high: #282a2d;
+  --ap-input-bg: #1e2023;
+  --ap-border: #333538;
+  --ap-border-strong: #333538;
+  --ap-text: #e2e2e6;
+  --ap-text-soft: #d1c5c1;
+  --ap-muted: #a38b86;
   --ap-overlay: rgba(0, 0, 0, 0.55);
-  --ap-danger: #f97066;
-  --ap-accent: #b07f99;
-  --ap-secondary: #76516f;
-  --ap-primary: #f5e9da;
-  --ap-primary-strong: #e8d5bc;
-  --ap-whatsapp-cream: #efe3ce;
+  --ap-danger: #ffb4ab;
+  --ap-accent: #8c9ba5;
+  --ap-secondary: #8c9ba5;
+  --ap-tertiary: #ebc06d;
+  --ap-primary: #e07a5f;
+  --ap-primary-strong: #ffb4a1;
+  --ap-whatsapp-cream: #e07a5f;
+  --ap-on-primary: #3c0800;
+  --ap-focus-ring: rgba(224, 122, 95, 0.32);
+  --ap-chip-danger-bg: #2d1a1a;
+  --ap-chip-danger-border: rgba(147, 0, 10, 0.3);
   font-size: 15px;
-  font-family: "Sora", "Segoe UI", "Noto Sans", Arial, sans-serif;
+  font-family: "Manrope", "Segoe UI", "Noto Sans", Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   font-synthesis: none;
@@ -29,6 +35,20 @@
 
 * {
   box-sizing: border-box;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.ap-title,
+.cd-titlebar__title,
+.ap-auth__title,
+.ap-courseHub__courseName,
+.ap-courseHub__panelTitle {
+  font-family: "Epilogue", "Manrope", sans-serif;
 }
 
 html,
@@ -48,4 +68,17 @@ body {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ap-border);
+  border-radius: 999px;
 }

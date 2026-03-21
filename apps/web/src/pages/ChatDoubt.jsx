@@ -191,6 +191,19 @@ export default function ChatDoubt() {
     }
   }
 
+  function getMinuteKey(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return "";
+    return [
+      d.getFullYear(),
+      d.getMonth(),
+      d.getDate(),
+      d.getHours(),
+      d.getMinutes(),
+    ].join("-");
+  }
+
   useEffect(() => {
     // Keep the newest messages visible on initial load and on new messages.
     // Using an anchor avoids brittle scrollHeight math.
@@ -568,33 +581,6 @@ export default function ChatDoubt() {
               >
                 {isClosed ? "Solved" : "Unsolved"}
               </button>
-              {showSolvedConfirm && (
-                <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-                  <div className="sd-modalCard">
-                    <div className="sd-modalTitle">Confirm Status Change</div>
-                    <div className="sd-modalBody">
-                      Are you sure you want to mark this doubt as{" "}
-                      {isClosed ? "unsolved" : "solved"}?
-                    </div>
-                    <div className="sd-modalActions">
-                      <button
-                        type="button"
-                        className="sd-modalBtn is-primary"
-                        onClick={confirmToggleSolved}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        type="button"
-                        className="sd-modalBtn is-accent"
-                        onClick={cancelToggleSolved}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
               <button
                 type="button"
                 className="cd-titlebar__action"
@@ -610,42 +596,6 @@ export default function ChatDoubt() {
               >
                 {t?.isEscalatedToProfessor ? "Escalated" : "Escalate"}
               </button>
-              {showEscalateConfirm && (
-                <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-                  <div className="sd-modalCard">
-                    <div className="sd-modalTitle">Confirm Escalation</div>
-                    <div className="sd-modalBody">
-                      Are you sure you want to escalate this doubt to the
-                      professor?
-                      <div
-                        style={{
-                          marginTop: 10,
-                          fontSize: 13,
-                          color: "var(--ap-muted)",
-                        }}
-                      >
-                        This will hand off the doubt to the professor.
-                      </div>
-                    </div>
-                    <div className="sd-modalActions">
-                      <button
-                        type="button"
-                        className="sd-modalBtn is-primary"
-                        onClick={confirmEscalateToProfessor}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        type="button"
-                        className="sd-modalBtn is-accent"
-                        onClick={cancelEscalateToProfessor}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           ) : user?.role === "professor" ? (
             <div className="cd-titlebar__meta" title={professorTaLabel}>
@@ -655,19 +605,73 @@ export default function ChatDoubt() {
         </div>
       </div>
 
-      {error ? (
-        <div style={{ color: "var(--ap-danger)", marginBottom: 12 }}>
-          {error}
+      {showSolvedConfirm && (
+        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
+          <div className="sd-modalCard">
+            <div className="sd-modalTitle">Confirm Status Change</div>
+            <div className="sd-modalBody">
+              Are you sure you want to mark this doubt as{" "}
+              {isClosed ? "unsolved" : "solved"}?
+            </div>
+            <div className="sd-modalActions">
+              <button
+                type="button"
+                className="sd-modalBtn is-primary"
+                onClick={confirmToggleSolved}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                className="sd-modalBtn is-accent"
+                onClick={cancelToggleSolved}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="chat-bubbles" style={{ marginBottom: 16 }}>
+      {showEscalateConfirm && (
+        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
+          <div className="sd-modalCard">
+            <div className="sd-modalTitle">Confirm Escalation</div>
+            <div className="sd-modalBody">
+              Are you sure you want to escalate this doubt to the professor?
+              <div className="cd-escalateNote">
+                This will hand off the doubt to the professor.
+              </div>
+            </div>
+            <div className="sd-modalActions">
+              <button
+                type="button"
+                className="sd-modalBtn is-primary"
+                onClick={confirmEscalateToProfessor}
+              >
+                Yes
+              </button>
+              <button
+                type="button"
+                className="sd-modalBtn is-accent"
+                onClick={cancelEscalateToProfessor}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error ? <div className="cd-error">{error}</div> : null}
+
+      <div className="chat-bubbles chat-bubbles--withFooterMargin">
         {loading ? (
-          <div style={{ padding: 12 }}>Loading...</div>
+          <div className="cd-chatState">Loading...</div>
         ) : messages.length === 0 ? (
-          <div style={{ padding: 12 }}>No messages yet.</div>
+          <div className="cd-chatState">No messages yet.</div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, idx) => {
             const senderId = Number(msg.senderId);
             const viewerId = Number(user?.id);
             const taId = Number(t?.taId);
@@ -689,90 +693,88 @@ export default function ChatDoubt() {
                 ? "edited"
                 : "";
 
+            const nextMsg = messages[idx + 1];
+            const prevMsg = messages[idx - 1];
+            const sameSenderAsNext =
+              !!nextMsg &&
+              String(nextMsg?.senderId) === String(msg?.senderId) &&
+              String(nextMsg?.senderRole || "") ===
+                String(msg?.senderRole || "");
+            const sameSenderAsPrev =
+              !!prevMsg &&
+              String(prevMsg?.senderId) === String(msg?.senderId) &&
+              String(prevMsg?.senderRole || "") ===
+                String(msg?.senderRole || "");
+            const sameMinuteAsNext =
+              !!nextMsg &&
+              getMinuteKey(nextMsg?.createdAt) === getMinuteKey(msg?.createdAt);
+            const sameMinuteAsPrev =
+              !!prevMsg &&
+              getMinuteKey(prevMsg?.createdAt) === getMinuteKey(msg?.createdAt);
+            const showTimestamp =
+              !!messageTime && !(sameSenderAsNext && sameMinuteAsNext);
+            const isGroupedWithNext = sameSenderAsNext && sameMinuteAsNext;
+            const isGroupedWithPrev = sameSenderAsPrev && sameMinuteAsPrev;
+
             const showProfessorDivider =
               !!firstProfessorMessageId &&
               String(msg.messageId) === String(firstProfessorMessageId);
 
             return (
-              <div
-                key={msg.messageId}
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  width: "100%",
-                }}
-              >
+              <div key={msg.messageId} className="cd-messageRow">
                 {showProfessorDivider ? (
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      margin: "10px 0 14px",
-                      padding: "0 8px",
-                      width: "100%",
-                    }}
-                  >
+                  <div className="cd-profDivider">
+                    <div className="cd-profDividerLine" />
                     <div
-                      style={{
-                        height: 1,
-                        background: "var(--ap-border-strong)",
-                        flex: 1,
-                      }}
-                    />
-                    <div
-                      style={{
-                        fontSize: 12,
-                        color: "var(--ap-muted)",
-                        whiteSpace: "nowrap",
-                      }}
+                      className="cd-profDividerText"
                       title={professorIdentity}
                     >
                       {professorDividerText}
                     </div>
-                    <div
-                      style={{
-                        height: 1,
-                        background: "var(--ap-border-strong)",
-                        flex: 1,
-                      }}
-                    />
+                    <div className="cd-profDividerLine" />
                   </div>
                 ) : null}
 
                 <div
-                  className={`chat-bubble ${isUser ? "user" : "bot"}`}
-                  style={{
-                    marginBottom: 8,
-                    maxWidth: "70%",
-                    alignSelf: isUser ? "flex-end" : "flex-start",
-                  }}
-                  onContextMenu={
-                    canModifyMessage ? (e) => openContextMenu(e, msg) : undefined
-                  }
+                  className={`cd-messageWrap ${
+                    isUser ? "is-user" : "is-peer"
+                  } ${isGroupedWithNext ? "is-grouped-next" : ""} ${
+                    isGroupedWithPrev ? "is-grouped-prev" : ""
+                  }`}
                 >
-                  <div style={{ whiteSpace: "pre-wrap" }}>
-                    {showDeleted ? (
-                      <span style={{ color: "var(--ap-muted)", fontStyle: "italic" }}>
-                        Message deleted
-                      </span>
-                    ) : (
-                      msg.content
-                    )}
+                  <div
+                    className={`chat-bubble ${isUser ? "user" : "bot"} ${
+                      isGroupedWithNext
+                        ? isUser
+                          ? "is-grouped-next-user"
+                          : "is-grouped-next-peer"
+                        : ""
+                    }`}
+                    onContextMenu={
+                      canModifyMessage
+                        ? (e) => openContextMenu(e, msg)
+                        : undefined
+                    }
+                  >
+                    <div className="cd-messageContent">
+                      {showDeleted ? (
+                        <span className="cd-messageDeleted">
+                          Message deleted
+                        </span>
+                      ) : (
+                        msg.content
+                      )}
+                    </div>
                   </div>
 
-                  {messageTime ? (
+                  {showTimestamp ? (
                     <div
-                      style={{
-                        marginTop: 2,
-                        fontSize: 9,
-                        lineHeight: 1.1,
-                        color: "var(--ap-muted)",
-                        textAlign: "right",
-                      }}
+                      className={`cd-messageMeta ${isUser ? "is-user" : "is-peer"}`}
                       title={msg?.createdAt}
                     >
-                      {watermarkText ? `${watermarkText} • ${messageTime}` : messageTime}
+                      {watermarkText
+                        ? `${watermarkText} • ${messageTime}`
+                        : messageTime}
                     </div>
                   ) : null}
                 </div>
@@ -787,48 +789,21 @@ export default function ChatDoubt() {
         <div
           role="menu"
           aria-label="Message actions"
-          style={{
-            position: "fixed",
-            top: contextMenu.y,
-            left: contextMenu.x,
-            width: 160,
-            background: "var(--ap-surface)",
-            border: "1px solid var(--ap-border)",
-            borderRadius: 10,
-            padding: 6,
-            zIndex: 9999,
-          }}
+          className="cd-contextMenu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
           onMouseDown={(e) => e.stopPropagation()}
         >
           <button
             type="button"
             onClick={startEditSelectedMessage}
-            style={{
-              width: "100%",
-              textAlign: "left",
-              padding: "10px 10px",
-              borderRadius: 8,
-              border: "none",
-              background: "transparent",
-              color: "var(--ap-text)",
-              cursor: "pointer",
-            }}
+            className="cd-contextMenuBtn"
           >
             Edit
           </button>
           <button
             type="button"
             onClick={startDeleteSelectedMessage}
-            style={{
-              width: "100%",
-              textAlign: "left",
-              padding: "10px 10px",
-              borderRadius: 8,
-              border: "none",
-              background: "transparent",
-              color: "var(--ap-danger)",
-              cursor: "pointer",
-            }}
+            className="cd-contextMenuBtn is-danger"
           >
             Delete
           </button>
@@ -844,16 +819,7 @@ export default function ChatDoubt() {
                 value={editDraft}
                 onChange={(e) => setEditDraft(e.target.value)}
                 rows={4}
-                style={{
-                  width: "100%",
-                  resize: "vertical",
-                  background: "var(--ap-input-bg)",
-                  color: "var(--ap-text)",
-                  border: "1px solid var(--ap-border)",
-                  borderRadius: 10,
-                  padding: 10,
-                  fontFamily: "inherit",
-                }}
+                className="cd-editTextarea"
               />
             </div>
             <div className="sd-modalActions">

@@ -28,8 +28,8 @@
 .ap-card {
   background: var(--ap-surface);
   border: 1px solid var(--ap-border);
-  border-radius: 12px;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.34);
+  border-radius: 2px;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
 }
 
 .ap-prof-dashboard.ap-card {
@@ -76,14 +76,18 @@
 .ap-input:focus,
 .ap-textarea:focus {
   border-color: var(--ap-accent);
-  box-shadow: 0 0 0 3px rgba(176, 127, 153, 0.24);
+  box-shadow: 0 0 0 3px var(--ap-focus-ring);
 }
 
 .ap-button {
   border: 1px solid var(--ap-border-strong);
   border-radius: 8px;
-  background: var(--ap-primary);
-  color: #2e2432;
+  background: linear-gradient(
+    135deg,
+    var(--ap-primary) 0%,
+    var(--ap-primary-strong) 100%
+  );
+  color: var(--ap-on-primary);
   font: inherit;
   font-weight: 600;
   padding: 8px 14px;
@@ -94,7 +98,7 @@
 }
 
 .ap-button:hover {
-  background: var(--ap-primary-strong);
+  filter: brightness(1.03);
 }
 
 .ap-button:disabled {
@@ -120,7 +124,7 @@
 
 .ap-dashboard-group {
   border: 1px solid var(--ap-border);
-  border-radius: 10px;
+  border-radius: 2px;
   overflow: hidden;
   background: var(--ap-surface-2);
 }
@@ -140,7 +144,7 @@
 }
 
 .ap-dashboard-group[open] > .ap-dashboard-summary {
-  background: rgba(245, 233, 218, 0.06);
+  background: rgba(224, 122, 95, 0.12);
 }
 
 .ap-dashboard-summaryMeta {
@@ -179,7 +183,7 @@
   width: 100%;
   border: 1px solid var(--ap-border-strong);
   border-radius: 2px;
-  background: #1b1730;
+  background: var(--ap-surface-high);
   color: var(--ap-text-soft);
   text-align: left;
   padding: 9px 10px;
@@ -195,7 +199,102 @@
 }
 
 .ap-dashboard-doubtBtn:hover {
-  background: #241e3d;
+  background: var(--ap-surface-2);
   border-color: var(--ap-primary-strong);
   color: var(--ap-text);
+}
+
+.sd-modalOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: var(--ap-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+
+.sd-modalCard {
+  background: var(--ap-surface);
+  padding: 22px 20px;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  min-width: 320px;
+  max-width: min(92vw, 460px);
+  text-align: center;
+  color: var(--ap-text);
+  border: 1px solid var(--ap-border);
+}
+
+.sd-modalTitle {
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--ap-text);
+}
+
+.sd-modalBody {
+  margin-bottom: 16px;
+  color: var(--ap-text-soft);
+}
+
+.sd-modalSubtle {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: var(--ap-muted);
+}
+
+.sd-modalActions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.sd-modalActions .sd-modalBtn {
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ap-text-soft);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.98em;
+  padding: 8px 12px;
+  width: auto;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
+}
+
+.sd-modalActions .sd-modalBtn.is-primary,
+.sd-modalActions .sd-modalBtn.is-accent {
+  color: var(--ap-text-soft);
+}
+
+.sd-modalActions .sd-modalBtn.is-primary:hover,
+.sd-modalActions .sd-modalBtn.is-accent:hover,
+.sd-modalActions .sd-modalBtn.is-primary:focus,
+.sd-modalActions .sd-modalBtn.is-primary:focus-visible,
+.sd-modalActions .sd-modalBtn.is-primary:active,
+.sd-modalActions .sd-modalBtn.is-accent:focus,
+.sd-modalActions .sd-modalBtn.is-accent:focus-visible,
+.sd-modalActions .sd-modalBtn.is-accent:active {
+  background: rgba(224, 122, 95, 0.1);
+  color: var(--ap-primary);
+}
+
+.sd-modalActions .sd-modalBtn:focus {
+  outline: none;
+}
+
+.sd-modalActions .sd-modalBtn:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
 }

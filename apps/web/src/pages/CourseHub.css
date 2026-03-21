@@ -5,12 +5,12 @@
   background:
     radial-gradient(
       circle at 10% 0%,
-      rgba(176, 127, 153, 0.14),
+      rgba(224, 122, 95, 0.16),
       transparent 38%
     ),
     radial-gradient(
       circle at 100% 100%,
-      rgba(245, 233, 218, 0.08),
+      rgba(255, 180, 161, 0.08),
       transparent 35%
     ),
     var(--ap-bg);
@@ -35,7 +35,7 @@
 }
 
 .ap-courseHub__panel {
-  background: var(--ap-surface-2);
+  background: var(--ap-surface);
   border: 1px solid var(--ap-border);
   border-radius: 2px;
   padding: 12px;
@@ -64,7 +64,11 @@
 
 .ap-courseHub__courseCard {
   border: 1px solid var(--ap-border-strong);
-  background: linear-gradient(160deg, #19152c 0%, #151128 100%);
+  background: linear-gradient(
+    160deg,
+    var(--ap-surface-2) 0%,
+    var(--ap-surface) 100%
+  );
   border-radius: 2px;
   padding: 12px;
   display: flex;
@@ -102,7 +106,7 @@
   padding: 2px 8px;
   font-size: 0.75rem;
   color: var(--ap-text-soft);
-  background: rgba(245, 233, 218, 0.08);
+  background: rgba(224, 122, 95, 0.14);
 }
 
 .ap-courseHub__courseMeta {
@@ -112,7 +116,7 @@
   font-size: 0.84rem;
   color: var(--ap-muted);
   padding-bottom: 2px;
-  border-bottom: 1px solid rgba(95, 79, 116, 0.4);
+  border-bottom: 1px solid rgba(51, 53, 56, 0.8);
 }
 
 .ap-courseHub__description {
@@ -138,7 +142,16 @@
 }
 
 .ap-courseHub__ghostBtn:hover {
-  background: rgba(245, 233, 218, 0.08);
+  background: var(--ap-surface-high);
+}
+
+.ap-courseHub__ghostBtn--danger {
+  color: var(--ap-danger);
+  border-color: rgba(255, 180, 171, 0.45);
+}
+
+.ap-courseHub__ghostBtn--danger:hover {
+  background: rgba(255, 180, 171, 0.12);
 }
 
 .ap-courseHub__membersWrap {
@@ -171,6 +184,28 @@
   border-radius: 8px;
   padding: 6px 8px;
   color: var(--ap-text-soft);
+}
+
+.ap-courseHub__memberActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ap-courseHub__memberRemoveBtn {
+  border: 1px solid rgba(255, 180, 171, 0.45);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ap-danger);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.ap-courseHub__memberRemoveBtn:hover {
+  background: rgba(255, 180, 171, 0.12);
 }
 
 .ap-courseHub__fab {
