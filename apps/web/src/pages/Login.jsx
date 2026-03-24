@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./AuthLayout.css";
 import doodleUrl from "../assets/doodle.png";
-const API_BASE = "http://localhost:3001";
+import { apiFetch } from "../lib/api";
 
 export default function Login() {
   const nav = useNavigate();
@@ -19,24 +19,20 @@ export default function Login() {
     if (!canSubmit) return;
     setStatus("Logging in...");
 
-    const res = await fetch(`${API_BASE}/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
+    try {
+      const data = await apiFetch("/auth/login", {
+        method: "POST",
+        body: { email, password },
+      });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      setStatus(err.error || `Login failed (${res.status})`);
-      return;
+      localStorage.setItem("ap_token", data.token);
+      localStorage.setItem("ap_user", JSON.stringify(data.user));
+
+      setStatus("Success");
+      nav("/courses");
+    } catch (e) {
+      setStatus(e?.message || "Login failed");
     }
-
-    const data = await res.json(); // { token, user }
-    localStorage.setItem("ap_token", data.token);
-    localStorage.setItem("ap_user", JSON.stringify(data.user));
-
-    setStatus("Success");
-    nav("/courses");
   }
 
   return (

@@ -7,6 +7,7 @@ export default function DoubtsLayout() {
   const { courseId, id } = useParams();
   const nav = useNavigate();
   const [user, setUser] = useState(null);
+  const [courseRole, setCourseRole] = useState(null);
   const [threads, setThreads] = useState([]);
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [threadsError, setThreadsError] = useState("");
@@ -18,6 +19,7 @@ export default function DoubtsLayout() {
       setLoadingThreads(true);
       setThreadsError("");
       const data = await apiFetch(`/threads?courseId=${courseId}`);
+      setCourseRole(data?.role || null);
       setThreads(data.threads || []);
     } catch (e) {
       setThreadsError(e.message || "Failed to load threads");
@@ -186,7 +188,7 @@ export default function DoubtsLayout() {
           )}
         </div>
 
-        {user?.role === "student" ? (
+        {courseRole === "student" ? (
           <div className="sd-composeBar">
             <button
               type="button"
@@ -202,7 +204,9 @@ export default function DoubtsLayout() {
       </div>
 
       <div className="sd-chatArea">
-        <Outlet context={{ threads, user, reloadThreads, courseId }} />
+        <Outlet
+          context={{ threads, user, reloadThreads, courseId, courseRole }}
+        />
       </div>
     </div>
   );

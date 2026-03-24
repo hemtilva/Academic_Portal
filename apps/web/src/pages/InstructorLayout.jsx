@@ -4,12 +4,13 @@ import { apiFetch } from "../lib/api";
 import "./StudentDoubts.css";
 
 export default function InstructorLayout() {
-  const { courseId } = useParams();
+  const { courseId, id } = useParams();
   const nav = useNavigate();
   const [user, setUser] = useState(null);
   const [threads, setThreads] = useState([]);
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [threadsError, setThreadsError] = useState("");
+  const [showSolved, setShowSolved] = useState(false);
 
   async function reloadThreads() {
     try {
@@ -47,6 +48,14 @@ export default function InstructorLayout() {
 
     reloadThreads();
   }, [nav, courseId]);
+
+  useEffect(() => {
+    if (!id) return;
+    const isViewingSolved = threads.some(
+      (t) => String(t?.threadId) === String(id) && t?.status === "closed",
+    );
+    if (isViewingSolved) setShowSolved(true);
+  }, [id, threads]);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   function logout(e) {
@@ -144,29 +153,61 @@ export default function InstructorLayout() {
               No escalated doubts
             </div>
           ) : (
-            threads.map((t) => (
-              <NavLink
-                key={t.threadId}
-                to={`/course/${courseId}/instructor/${t.threadId}`}
-                className={({ isActive }) =>
-                  `sd-doubtItem${isActive ? " is-active" : ""}`
-                }
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <span>
-                  #{t.threadId} - {t.title}
-                </span>
-                <div
-                  className={`sd-status ${
-                    t.isEscalatedToProfessor
-                      ? "escalated"
-                      : t.status === "closed"
-                        ? "resolved"
-                        : "unresolved"
-                  }`}
-                />
-              </NavLink>
-            ))
+            (() => {
+              const unsolvedThreads = threads.filter((t) => t?.status !== "closed");
+              const solvedThreads = threads.filter((t) => t?.status === "closed");
+
+              return (
+                <>
+                  {unsolvedThreads.map((t) => (
+                    <NavLink
+                      key={t.threadId}
+                      to={`/course/${courseId}/instructor/${t.threadId}`}
+                      className={({ isActive }) =>
+                        `sd-doubtItem${isActive ? " is-active" : ""}`
+                      }
+                      style={{ textDecoration: "none", color: "inherit" }}
+                    >
+                      <span>
+                        #{t.threadId} - {t.title}
+                      </span>
+                      <div className="sd-status escalated" />
+                    </NavLink>
+                  ))}
+
+                  {solvedThreads.length > 0 ? (
+                    <button
+                      type="button"
+                      className={`sd-doubtItem sd-solvedToggle${showSolved ? " is-open" : ""}`}
+                      onClick={() => setShowSolved((v) => !v)}
+                    >
+                      <span>Solved ({solvedThreads.length})</span>
+                      <span className="sd-solvedChevron" aria-hidden="true">
+                        {showSolved ? "▾" : "▸"}
+                      </span>
+                    </button>
+                  ) : null}
+
+                  {showSolved
+                    ? solvedThreads.map((t) => (
+                        <NavLink
+                          key={t.threadId}
+                          to={`/course/${courseId}/instructor/${t.threadId}`}
+                          className={({ isActive }) =>
+                            `sd-doubtItem sd-doubtItem--solved${isActive ? " is-active" : ""}`
+                          }
+                          style={{ textDecoration: "none", color: "inherit" }}
+                        >
+                          <span>
+                            #{t.threadId} - {t.title}
+                          </span>
+                          <div className="sd-status resolved" />
+                        </NavLink>
+                      ))
+                    : null}
+                </>
+              );
+            })()
           )}
         </div>
       </div>

@@ -21,7 +21,9 @@ function createAuthRouter({ pool, isValidRole, signToken }) {
     const userRole = (typeof role === "string" ? role : "student").trim();
 
     if (!isValidRole(userRole)) {
-      return res.status(400).json({ error: "invalid role" });
+      return res
+        .status(400)
+        .json({ error: "role must be student or professor" });
     }
 
     try {

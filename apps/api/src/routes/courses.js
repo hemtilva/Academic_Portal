@@ -247,7 +247,7 @@ function createCoursesRouter({
       return res.status(400).json({ error: "joinCode is required" });
     }
 
-    if (!requireRole(res, auth.role, ["student", "ta"])) return;
+    if (!requireRole(res, auth.role, ["student"])) return;
 
     try {
       const found = await pool.query(
@@ -272,7 +272,7 @@ function createCoursesRouter({
          VALUES ($1, $2, $3)
          ON CONFLICT (course_id, user_id)
          DO UPDATE SET role = EXCLUDED.role`,
-        [c.course_id, auth.userId, auth.role],
+        [c.course_id, auth.userId, "student"],
       );
 
       return res.json({
@@ -284,7 +284,7 @@ function createCoursesRouter({
           joinCode: c.join_code,
           createdAt: c.created_at,
           isActive: c.is_active,
-          role: auth.role,
+          role: "student",
         },
       });
     } catch (err) {

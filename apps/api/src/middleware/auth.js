@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 
 function isValidRole(role) {
-  return role === "student" || role === "ta" || role === "professor";
+  return role === "student" || role === "professor";
 }
 
 function requireAuth(req, res, next) {

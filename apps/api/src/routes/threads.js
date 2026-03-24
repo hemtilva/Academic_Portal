@@ -39,6 +39,7 @@ function createThreadsRouter({
     const result = await pool.query(sql, params);
 
     return res.json({
+      role: courseCtx.role,
       threads: result.rows.map((r) => ({
         threadId: r.thread_id,
         courseId: r.course_id,

@@ -32,15 +32,12 @@ const { createThreadsRouter } = require("./routes/threads");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
+const HOST = process.env.HOST || "0.0.0.0";
 
 app.use(express.json());
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://localhost:5177",
-    ],
+    origin: true,
     credentials: true,
   }),
 );
@@ -83,7 +80,7 @@ app.use(
   await testDbConnection();
   await ensureMessageColumns();
 
-  app.listen(PORT, () => {
-    console.log(`API listening on http://localhost:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`API listening on http://${HOST}:${PORT}`);
   });
 })();

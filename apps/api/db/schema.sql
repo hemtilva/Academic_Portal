@@ -2,8 +2,43 @@ CREATE TABLE IF NOT EXISTS users (
   user_id        SERIAL PRIMARY KEY,
   email          TEXT NOT NULL UNIQUE,
   password_hash  TEXT NOT NULL,
-  role           TEXT NOT NULL CHECK (role IN ('student', 'professor', 'ta'))
+  role           TEXT NOT NULL CHECK (role IN ('student', 'professor'))
 );
+
+-- Global TA accounts are deprecated. TAs are now course-scoped via course_members.role.
+UPDATE users
+SET role = 'student'
+WHERE role = 'ta';
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.constraint_column_usage ccu
+      ON tc.constraint_name = ccu.constraint_name
+    WHERE tc.table_name = 'users'
+      AND tc.constraint_type = 'CHECK'
+      AND ccu.column_name = 'role'
+  ) THEN
+    EXECUTE (
+      SELECT string_agg(
+        format('ALTER TABLE users DROP CONSTRAINT %I', tc.constraint_name),
+        '; '
+      )
+      FROM information_schema.table_constraints tc
+      JOIN information_schema.constraint_column_usage ccu
+        ON tc.constraint_name = ccu.constraint_name
+      WHERE tc.table_name = 'users'
+        AND tc.constraint_type = 'CHECK'
+        AND ccu.column_name = 'role'
+    );
+  END IF;
+
+  ALTER TABLE users
+    ADD CONSTRAINT users_role_check
+    CHECK (role IN ('student', 'professor'));
+END $$;
 
 CREATE TABLE IF NOT EXISTS courses (
   course_id   SERIAL PRIMARY KEY,

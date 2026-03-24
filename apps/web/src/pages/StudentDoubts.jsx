@@ -5,6 +5,7 @@ import { apiFetch } from "../lib/api";
 export default function StudentDoubts() {
   const outlet = useOutletContext();
   const user = outlet.user;
+  const courseRole = outlet.courseRole;
   const reloadThreads = outlet.reloadThreads;
   const courseId = outlet.courseId;
   const nav = useNavigate();
@@ -13,7 +14,7 @@ export default function StudentDoubts() {
   const [status, setStatus] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  if (user?.role !== "student") {
+  if (courseRole !== "student") {
     return <div>Select a doubt to view the conversation.</div>;
   }
 

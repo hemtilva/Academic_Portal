@@ -1,4 +1,14 @@
-export const API_BASE = "http://localhost:3001";
+const fallbackApiBase =
+  typeof window !== "undefined"
+    ? `http://${window.location.hostname}:3001`
+    : "http://localhost:3001";
+
+// In Vite dev, route through the dev server proxy so LAN clients only need port 5173.
+const devProxyApiBase = "/api";
+
+export const API_BASE =
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.DEV ? devProxyApiBase : fallbackApiBase);
 
 export async function apiFetch(path, { method = "GET", body } = {}) {
   const token = localStorage.getItem("ap_token");

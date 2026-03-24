@@ -11,7 +11,8 @@ export default function ChatDoubt() {
   const nav = useNavigate();
   const location = useLocation();
   const { id, courseId } = useParams();
-  const { threads, user, reloadThreads } = useOutletContext();
+  const { threads, user, reloadThreads, courseRole } = useOutletContext();
+  const activeRole = courseRole || user?.role;
 
   const isInstructorRoute = useMemo(() => {
     const path = String(location?.pathname || "");
@@ -59,21 +60,21 @@ export default function ChatDoubt() {
 
   const title = t?.title || "Doubt";
   const isClosed = t?.status === "closed";
-  const canToggleSolved = user?.role === "student";
+  const canToggleSolved = activeRole === "student";
   const canReply = useMemo(() => {
     if (!user) return false;
     if (isClosed) return false;
-    if (user.role === "student") return true;
-    if (user.role === "professor") return !!t?.isEscalatedToProfessor;
+    if (activeRole === "student") return true;
+    if (activeRole === "professor") return !!t?.isEscalatedToProfessor;
     return true; // ta (and any other non-student roles) can reply to open threads
-  }, [user, isClosed, t?.isEscalatedToProfessor]);
+  }, [user, isClosed, t?.isEscalatedToProfessor, activeRole]);
 
   const replyPlaceholder = useMemo(() => {
     if (canReply) return "Type your message...";
     if (isClosed) return "This doubt is solved";
-    if (user?.role === "professor") return "View only (not escalated)";
+    if (activeRole === "professor") return "View only (not escalated)";
     return "You cannot reply";
-  }, [canReply, isClosed, user?.role]);
+  }, [canReply, isClosed, activeRole]);
 
   const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,11 +137,11 @@ export default function ChatDoubt() {
   const firstProfessorMessageId = firstProfessorMessage?.messageId ?? null;
   const professorIdentity = useMemo(() => {
     if (!t?.isEscalatedToProfessor) return "";
-    if (user?.role === "professor") return user?.email || "Professor";
+    if (activeRole === "professor") return user?.email || "Professor";
     return firstProfessorMessage?.senderEmail || "Professor";
   }, [
     t?.isEscalatedToProfessor,
-    user?.role,
+    activeRole,
     user?.email,
     firstProfessorMessage?.senderEmail,
   ]);
@@ -153,18 +154,19 @@ export default function ChatDoubt() {
 
   const leftTitleLabel = useMemo(() => {
     if (!user) return "";
-    if (user.role === "student") {
+    if (activeRole === "student") {
       if (t?.isEscalatedToProfessor) {
         return professorIdentity || "Professor";
       }
       return t?.taEmail ? `${t.taEmail}` : "TA";
     }
-    if (user.role === "ta" || user.role === "professor") {
+    if (activeRole === "ta" || activeRole === "professor") {
       return t?.studentEmail ? `${t.studentEmail}` : "Student";
     }
     return "";
   }, [
     user,
+    activeRole,
     t?.taEmail,
     t?.studentEmail,
     t?.isEscalatedToProfessor,
@@ -172,12 +174,25 @@ export default function ChatDoubt() {
   ]);
 
   const professorTaLabel = useMemo(() => {
-    if (user?.role !== "professor") return "";
+    if (activeRole !== "professor") return "";
     return t?.taEmail ? `${t.taEmail}` : "TA";
-  }, [user?.role, t?.taEmail]);
+  }, [activeRole, t?.taEmail]);
 
   function goBackToDashboard() {
     nav(`/course/${courseId}/instructor`, { replace: false });
+  }
+
+  function handleAccessError(message) {
+    const lower = String(message || "").toLowerCase();
+    if (lower.includes("unauthorized")) {
+      nav("/login", { replace: true });
+      return true;
+    }
+    if (lower.includes("forbidden")) {
+      nav("/", { replace: true });
+      return true;
+    }
+    return false;
   }
 
   function formatMessageTime(ts) {
@@ -230,9 +245,7 @@ export default function ChatDoubt() {
     } catch (e) {
       const msg = e?.message || "Failed to update status";
       setError(msg);
-      if (String(msg).toLowerCase().includes("unauthorized")) {
-        nav("/login", { replace: true });
-      }
+      handleAccessError(msg);
     } finally {
       setToggling(false);
     }
@@ -242,7 +255,7 @@ export default function ChatDoubt() {
   }
 
   function escalateToProfessor() {
-    if (!id || user?.role !== "student") return;
+    if (!id || activeRole !== "student") return;
     if (t?.isEscalatedToProfessor) return;
     if (isClosed) return;
     setShowEscalateConfirm(true);
@@ -262,9 +275,7 @@ export default function ChatDoubt() {
     } catch (e) {
       const msg = e?.message || "Failed to escalate";
       setError(msg);
-      if (String(msg).toLowerCase().includes("unauthorized")) {
-        nav("/login", { replace: true });
-      }
+      handleAccessError(msg);
     } finally {
       setEscalating(false);
     }
@@ -327,9 +338,7 @@ export default function ChatDoubt() {
     } catch (e) {
       const msg = e?.message || "Failed to edit message";
       setError(msg);
-      if (String(msg).toLowerCase().includes("unauthorized")) {
-        nav("/login", { replace: true });
-      }
+      handleAccessError(msg);
     } finally {
       setSavingEdit(false);
     }
@@ -394,9 +403,7 @@ export default function ChatDoubt() {
     } catch (e) {
       const msg = e?.message || "Failed to delete message";
       setError(msg);
-      if (String(msg).toLowerCase().includes("unauthorized")) {
-        nav("/login", { replace: true });
-      }
+      handleAccessError(msg);
     } finally {
       setDeletingMessage(false);
     }
@@ -456,10 +463,7 @@ export default function ChatDoubt() {
       } catch (e) {
         const msg = e?.message || "Failed to load messages";
         if (!cancelled) setError(msg);
-
-        if (String(msg).toLowerCase().includes("unauthorized")) {
-          nav("/login", { replace: true });
-        }
+        if (!cancelled) handleAccessError(msg);
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -485,9 +489,7 @@ export default function ChatDoubt() {
       } catch (e) {
         const msg = e?.message || "Failed to refresh messages";
         if (!cancelled) setError(msg);
-        if (!cancelled && String(msg).toLowerCase().includes("unauthorized")) {
-          nav("/login", { replace: true });
-        }
+        if (!cancelled) handleAccessError(msg);
       }
     })();
 
@@ -497,9 +499,7 @@ export default function ChatDoubt() {
       } catch (e) {
         const msg = e?.message || "Failed to refresh messages";
         if (!cancelled) setError(msg);
-        if (!cancelled && String(msg).toLowerCase().includes("unauthorized")) {
-          nav("/login", { replace: true });
-        }
+        if (!cancelled) handleAccessError(msg);
       }
     }, 2000);
 
@@ -544,10 +544,7 @@ export default function ChatDoubt() {
     } catch (e) {
       const msg = e?.message || "Failed to send message";
       setError(msg);
-
-      if (String(msg).toLowerCase().includes("unauthorized")) {
-        nav("/login", { replace: true });
-      }
+      handleAccessError(msg);
     }
   }
 
@@ -597,7 +594,7 @@ export default function ChatDoubt() {
                 {t?.isEscalatedToProfessor ? "Escalated" : "Escalate"}
               </button>
             </>
-          ) : user?.role === "professor" ? (
+          ) : activeRole === "professor" ? (
             <div className="cd-titlebar__meta" title={professorTaLabel}>
               {professorTaLabel}
             </div>
@@ -676,7 +673,7 @@ export default function ChatDoubt() {
             const viewerId = Number(user?.id);
             const taId = Number(t?.taId);
             const isUser =
-              user?.role === "professor"
+              activeRole === "professor"
                 ? senderId === taId || senderId === viewerId
                 : senderId === viewerId;
 

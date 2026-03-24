@@ -2,8 +2,7 @@ import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./AuthLayout.css";
 import doodleUrl from "../assets/doodle.png";
-
-const API_BASE = "http://localhost:3001";
+import { apiFetch } from "../lib/api";
 
 export default function Signup() {
   const nav = useNavigate();
@@ -32,24 +31,20 @@ export default function Signup() {
     if (!canSubmit) return;
     setStatus("Creating account...");
 
-    const res = await fetch(`${API_BASE}/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, role }),
-    });
+    try {
+      const data = await apiFetch("/auth/signup", {
+        method: "POST",
+        body: { email, password, role },
+      });
 
-    const data = await res.json().catch(() => ({}));
+      localStorage.setItem("ap_token", data.token);
+      localStorage.setItem("ap_user", JSON.stringify(data.user));
 
-    if (!res.ok) {
-      setStatus(data.error || `Signup failed (${res.status})`);
-      return;
+      setStatus("Account created. Logged in!");
+      nav("/courses");
+    } catch (e) {
+      setStatus(e?.message || "Signup failed");
     }
-
-    localStorage.setItem("ap_token", data.token);
-    localStorage.setItem("ap_user", JSON.stringify(data.user));
-
-    setStatus("Account created. Logged in!");
-    nav("/courses");
   }
 
   return (
@@ -104,14 +99,6 @@ export default function Signup() {
                 onClick={() => setRole("student")}
               >
                 Student
-              </button>
-              <button
-                type="button"
-                className={`ap-auth__roleOption ${role === "ta" ? "is-active" : ""}`}
-                aria-pressed={role === "ta"}
-                onClick={() => setRole("ta")}
-              >
-                TA
               </button>
               <button
                 type="button"

@@ -97,7 +97,7 @@ body {
 .ap-auth__roleGroup {
   width: min(320px, 70%);
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 

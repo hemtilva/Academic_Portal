@@ -37,6 +37,7 @@ export default function App() {
           <Route index element={<InstructorDashboardBlank />} />
           <Route path=":id" element={<ChatDoubt />} />
         </Route>
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
