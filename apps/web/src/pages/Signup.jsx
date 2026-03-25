@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "./AuthLayout.css";
-import doodleUrl from "../assets/doodle.png";
 import { apiFetch } from "../lib/api";
 
 export default function Signup() {
@@ -49,10 +48,6 @@ export default function Signup() {
 
   return (
     <div className="ap-auth">
-      <div className="ap-auth__art" aria-hidden="true">
-        <img className="ap-auth__doodle" src={doodleUrl} alt="" />
-      </div>
-
       <div className="ap-auth__panel">
         <div className="ap-auth__panelInner">
           <h1 className="ap-auth__title">
