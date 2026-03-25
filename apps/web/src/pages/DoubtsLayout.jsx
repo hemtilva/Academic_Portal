@@ -14,6 +14,12 @@ export default function DoubtsLayout() {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showSolved, setShowSolved] = useState(false);
   const [seenMap, setSeenMap] = useState({});
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 900px)").matches
+      : false,
+  );
+  const [mobilePane, setMobilePane] = useState("sidebar");
 
   const seenStorageKey = user?.id
     ? `ap_seen_threads_v1_${user.id}_${courseId}`
@@ -75,6 +81,28 @@ export default function DoubtsLayout() {
   }
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 900px)");
+    const onChange = (e) => setIsMobile(e.matches);
+
+    setIsMobile(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobilePane("sidebar");
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile && id) {
+      setMobilePane("content");
+    }
+  }, [isMobile, id]);
+
+  useEffect(() => {
     const token = localStorage.getItem("ap_token");
     if (!token) {
       nav("/login", { replace: true });
@@ -133,8 +161,34 @@ export default function DoubtsLayout() {
     setShowLogoutConfirm(false);
   }
 
+  function openContentPane() {
+    if (isMobile) setMobilePane("content");
+  }
+
   return (
-    <div className="sd-container">
+    <div
+      className={`sd-container${isMobile ? ` is-mobile is-mobile-${mobilePane}` : ""}`}
+    >
+      <div
+        className="sd-mobileSwitch"
+        role="tablist"
+        aria-label="Mobile layout switch"
+      >
+        <button
+          type="button"
+          className={`sd-mobileSwitchBtn${mobilePane === "sidebar" ? " is-active" : ""}`}
+          onClick={() => setMobilePane("sidebar")}
+        >
+          Sidebar
+        </button>
+        <button
+          type="button"
+          className={`sd-mobileSwitchBtn${mobilePane === "content" ? " is-active" : ""}`}
+          onClick={() => setMobilePane("content")}
+        >
+          Chat / Compose
+        </button>
+      </div>
       <div className="sd-sidebar">
         <div className="sd-header">
           <div className="sd-headerLeft">
@@ -198,6 +252,7 @@ export default function DoubtsLayout() {
                     <NavLink
                       key={t.threadId}
                       to={`/course/${courseId}/doubts/${t.threadId}`}
+                      onClick={openContentPane}
                       className={({ isActive }) => {
                         const unread = isThreadUnread(t);
                         return `sd-doubtItem${isActive ? " is-active" : ""}${
@@ -239,6 +294,7 @@ export default function DoubtsLayout() {
                         <NavLink
                           key={t.threadId}
                           to={`/course/${courseId}/doubts/${t.threadId}`}
+                          onClick={openContentPane}
                           className={({ isActive }) => {
                             const unread = isThreadUnread(t);
                             return `sd-doubtItem sd-doubtItem--solved${isActive ? " is-active" : ""}${
@@ -265,7 +321,10 @@ export default function DoubtsLayout() {
             <button
               type="button"
               className="sd-composeBtn"
-              onClick={() => nav(`/course/${courseId}/doubts`)}
+              onClick={() => {
+                nav(`/course/${courseId}/doubts`);
+                openContentPane();
+              }}
               aria-label="Post a new doubt"
               title="Post a new doubt"
             >

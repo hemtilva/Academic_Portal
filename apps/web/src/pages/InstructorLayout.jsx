@@ -12,6 +12,12 @@ export default function InstructorLayout() {
   const [threadsError, setThreadsError] = useState("");
   const [showSolved, setShowSolved] = useState(false);
   const [seenMap, setSeenMap] = useState({});
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(max-width: 900px)").matches
+      : false,
+  );
+  const [mobilePane, setMobilePane] = useState("sidebar");
 
   const seenStorageKey = user?.id
     ? `ap_seen_threads_v1_${user.id}_${courseId}`
@@ -75,6 +81,28 @@ export default function InstructorLayout() {
   }
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 900px)");
+    const onChange = (e) => setIsMobile(e.matches);
+
+    setIsMobile(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobilePane("sidebar");
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (isMobile && id) {
+      setMobilePane("content");
+    }
+  }, [isMobile, id]);
+
+  useEffect(() => {
     const token = localStorage.getItem("ap_token");
     if (!token) {
       nav("/login", { replace: true });
@@ -134,8 +162,34 @@ export default function InstructorLayout() {
     setShowLogoutConfirm(false);
   }
 
+  function openContentPane() {
+    if (isMobile) setMobilePane("content");
+  }
+
   return (
-    <div className="sd-container">
+    <div
+      className={`sd-container${isMobile ? ` is-mobile is-mobile-${mobilePane}` : ""}`}
+    >
+      <div
+        className="sd-mobileSwitch"
+        role="tablist"
+        aria-label="Mobile layout switch"
+      >
+        <button
+          type="button"
+          className={`sd-mobileSwitchBtn${mobilePane === "sidebar" ? " is-active" : ""}`}
+          onClick={() => setMobilePane("sidebar")}
+        >
+          Sidebar
+        </button>
+        <button
+          type="button"
+          className={`sd-mobileSwitchBtn${mobilePane === "content" ? " is-active" : ""}`}
+          onClick={() => setMobilePane("content")}
+        >
+          Chat / Summary
+        </button>
+      </div>
       <div className="sd-sidebar">
         <div className="sd-header">
           <div className="sd-headerLeft">
@@ -183,6 +237,7 @@ export default function InstructorLayout() {
           <NavLink
             to={`/course/${courseId}/instructor`}
             end
+            onClick={openContentPane}
             className={({ isActive }) =>
               `sd-doubtItem${isActive ? " is-active" : ""}`
             }
@@ -229,6 +284,7 @@ export default function InstructorLayout() {
                     <NavLink
                       key={t.threadId}
                       to={`/course/${courseId}/instructor/${t.threadId}`}
+                      onClick={openContentPane}
                       className={({ isActive }) => {
                         const unread = isThreadUnread(t);
                         return `sd-doubtItem${isActive ? " is-active" : ""}${
@@ -262,6 +318,7 @@ export default function InstructorLayout() {
                         <NavLink
                           key={t.threadId}
                           to={`/course/${courseId}/instructor/${t.threadId}`}
+                          onClick={openContentPane}
                           className={({ isActive }) => {
                             const unread = isThreadUnread(t);
                             return `sd-doubtItem sd-doubtItem--solved${isActive ? " is-active" : ""}${
