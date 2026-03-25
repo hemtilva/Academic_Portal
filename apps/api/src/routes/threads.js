@@ -23,11 +23,17 @@ function createThreadsRouter({
       SELECT t.thread_id, t.course_id, t.title, t.status, t.student_id, t.ta_id,
         COALESCE(t.is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
         t.escalated_at,
+        lm.last_message_at,
         s.email AS student_email,
         ta.email AS ta_email
       FROM threads t
       JOIN users s ON s.user_id = t.student_id
       LEFT JOIN users ta ON ta.user_id = t.ta_id
+      LEFT JOIN LATERAL (
+        SELECT MAX(m.created_at) AS last_message_at
+        FROM messages m
+        WHERE m.thread_id = t.thread_id
+      ) lm ON TRUE
       WHERE t.course_id = $1 AND (${where.replaceAll("$1", "$2")})
       ORDER BY t.thread_id DESC
       LIMIT 100`;
@@ -49,6 +55,7 @@ function createThreadsRouter({
         taId: r.ta_id,
         isEscalatedToProfessor: r.is_escalated_to_professor,
         escalatedAt: r.escalated_at,
+        lastMessageAt: r.last_message_at,
         studentEmail: r.student_email,
         taEmail: r.ta_email,
       })),
@@ -677,7 +684,9 @@ function createThreadsRouter({
 
         const remainingCount = Number(remaining.rows?.[0]?.cnt) || 0;
         if (remainingCount === 0) {
-          await pool.query("DELETE FROM threads WHERE thread_id = $1", [threadId]);
+          await pool.query("DELETE FROM threads WHERE thread_id = $1", [
+            threadId,
+          ]);
           return res.json({ ok: true, threadDeleted: true, threadId });
         }
 

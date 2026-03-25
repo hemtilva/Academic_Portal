@@ -101,6 +101,14 @@
   color: var(--ap-text);
 }
 
+.sd-doubtItem.is-unread {
+  color: var(--ap-text);
+}
+
+.sd-doubtItem.is-unread > span:first-child {
+  font-weight: 700;
+}
+
 .sd-doubtItem.is-active {
   background: rgba(224, 122, 95, 0.1);
   border: 1px solid rgba(224, 122, 95, 0.2);

@@ -11,6 +11,49 @@ export default function InstructorLayout() {
   const [loadingThreads, setLoadingThreads] = useState(true);
   const [threadsError, setThreadsError] = useState("");
   const [showSolved, setShowSolved] = useState(false);
+  const [seenMap, setSeenMap] = useState({});
+
+  const seenStorageKey = user?.id
+    ? `ap_seen_threads_v1_${user.id}_${courseId}`
+    : null;
+
+  function parseIsoTime(value) {
+    if (!value) return 0;
+    const ms = new Date(value).getTime();
+    return Number.isNaN(ms) ? 0 : ms;
+  }
+
+  function persistSeenMap(next) {
+    if (!seenStorageKey) return;
+    try {
+      localStorage.setItem(seenStorageKey, JSON.stringify(next));
+    } catch {
+      // ignore storage failures
+    }
+  }
+
+  function markThreadSeen(thread) {
+    if (!thread || !seenStorageKey) return;
+    const messageAt = thread?.lastMessageAt;
+    if (!messageAt) return;
+
+    const threadKey = String(thread.threadId);
+    setSeenMap((prev) => {
+      const prevSeenAt = prev?.[threadKey];
+      if (parseIsoTime(prevSeenAt) >= parseIsoTime(messageAt)) return prev;
+      const next = { ...prev, [threadKey]: messageAt };
+      persistSeenMap(next);
+      return next;
+    });
+  }
+
+  function isThreadUnread(thread) {
+    const messageAt = thread?.lastMessageAt;
+    if (!messageAt) return false;
+    if (id && String(id) === String(thread?.threadId)) return false;
+    const seenAt = seenMap?.[String(thread.threadId)];
+    return parseIsoTime(messageAt) > parseIsoTime(seenAt);
+  }
 
   async function reloadThreads() {
     try {
@@ -50,11 +93,30 @@ export default function InstructorLayout() {
   }, [nav, courseId]);
 
   useEffect(() => {
+    if (!seenStorageKey) {
+      setSeenMap({});
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(seenStorageKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      setSeenMap(parsed && typeof parsed === "object" ? parsed : {});
+    } catch {
+      setSeenMap({});
+    }
+  }, [seenStorageKey]);
+
+  useEffect(() => {
     if (!id) return;
     const isViewingSolved = threads.some(
       (t) => String(t?.threadId) === String(id) && t?.status === "closed",
     );
     if (isViewingSolved) setShowSolved(true);
+
+    const activeThread = threads.find(
+      (t) => String(t?.threadId) === String(id),
+    );
+    if (activeThread) markThreadSeen(activeThread);
   }, [id, threads]);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -154,8 +216,12 @@ export default function InstructorLayout() {
             </div>
           ) : (
             (() => {
-              const unsolvedThreads = threads.filter((t) => t?.status !== "closed");
-              const solvedThreads = threads.filter((t) => t?.status === "closed");
+              const unsolvedThreads = threads.filter(
+                (t) => t?.status !== "closed",
+              );
+              const solvedThreads = threads.filter(
+                (t) => t?.status === "closed",
+              );
 
               return (
                 <>
@@ -163,9 +229,12 @@ export default function InstructorLayout() {
                     <NavLink
                       key={t.threadId}
                       to={`/course/${courseId}/instructor/${t.threadId}`}
-                      className={({ isActive }) =>
-                        `sd-doubtItem${isActive ? " is-active" : ""}`
-                      }
+                      className={({ isActive }) => {
+                        const unread = isThreadUnread(t);
+                        return `sd-doubtItem${isActive ? " is-active" : ""}${
+                          unread && !isActive ? " is-unread" : ""
+                        }`;
+                      }}
                       style={{ textDecoration: "none", color: "inherit" }}
                     >
                       <span>
@@ -193,9 +262,12 @@ export default function InstructorLayout() {
                         <NavLink
                           key={t.threadId}
                           to={`/course/${courseId}/instructor/${t.threadId}`}
-                          className={({ isActive }) =>
-                            `sd-doubtItem sd-doubtItem--solved${isActive ? " is-active" : ""}`
-                          }
+                          className={({ isActive }) => {
+                            const unread = isThreadUnread(t);
+                            return `sd-doubtItem sd-doubtItem--solved${isActive ? " is-active" : ""}${
+                              unread && !isActive ? " is-unread" : ""
+                            }`;
+                          }}
                           style={{ textDecoration: "none", color: "inherit" }}
                         >
                           <span>
