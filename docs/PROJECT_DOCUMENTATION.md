@@ -21,15 +21,29 @@ The frontend is built using React and Vite, structured into pages and layouts:
 
 ### Backend Routing & Logic (`apps/api/src/routes/` & `middleware/`)
 
-The backend relies on Express.js endpoints combined with modular logic:
+The backend is organized as a set of small Express routers, each one owning a specific part of the API. In `apps/api/src/index.js`, the server loads shared utilities first, configures `express.json()` and CORS, then mounts each router so the request flow is easy to follow and isolate.
 
-- **`auth.js`**: Handles password hashing, login, and JWT/session assignments.
-- **`courses.js`**: Manages course creation, fetching course lists, and processing join-code enrollments.
-- **`professor.js`**: Endpoints tailored specifically to Professor/TA permissions (fetching class metrics, etc).
-- **`threads.js`**: CRUD operations on doubt threads, including standard messaging, "closing" threads, and escalating threads to a Professor.
-- **`health.js`**: Simple ping endpoint for health checks.
-- **`middleware/auth.js`**: Handles route protection by validating incoming JWTs or standard sessions.
-- **`lib/courseAccess.js`**: Shared validation logic checking if a user ID is legally enrolled in a targeted course.
+How the routing flow works:
+
+1. A request reaches the Express app in `index.js`.
+2. Middleware parses JSON bodies and allows browser requests through CORS.
+3. Public routes such as health and auth are mounted first.
+4. Protected routes call `requireAuth`, which checks the `Authorization: Bearer <token>` header.
+5. After token validation, `getAuthContext()` extracts the user id and role from the JWT payload.
+6. Route-specific guards such as `requireRole()` and `requireCourseMember()` verify that the user is allowed to perform the action in the current course.
+7. The route handler performs the database query and returns a normalized JSON response for the frontend.
+
+Route responsibilities in more detail:
+
+- **`auth.js`**: Handles signup and login. It validates the input, hashes passwords with `bcryptjs`, stores users in PostgreSQL, and returns a signed JWT for authenticated sessions.
+- **`courses.js`**: Handles course creation, listing, joining by join code, and member management. It also contains logic for assigning the professor to the course, preventing duplicate joins, and preserving course membership roles.
+- **`threads.js`**: Handles the doubt/chat workflow. It creates threads, fetches thread details, loads messages, updates thread status, and escalates a student doubt to a professor when needed.
+- **`professor.js`**: Provides professor-only reporting endpoints such as TA statistics and TA doubt summaries for a specific course.
+- **`health.js`**: Provides a simple health endpoint to confirm the API is running.
+- **`middleware/auth.js`**: Implements authentication and authorization helpers. `requireAuth()` validates the JWT, `getAuthContext()` converts the decoded token into a usable `{ userId, role }` object, `requireRole()` blocks unauthorized roles, and `signToken()` creates new JWTs.
+- **`lib/courseAccess.js`**: Contains shared course-level access helpers used by multiple routers. These helpers keep membership checks, role lookup, and course-specific permission logic in one place instead of duplicating it inside every route file.
+
+This structure keeps the API predictable: auth gates are handled before sensitive handlers run, course membership is checked before course-specific actions, and each router focuses only on one domain of the application.
 
 ---
 
