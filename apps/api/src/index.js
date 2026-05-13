@@ -4,11 +4,7 @@ const dotenv = require("dotenv");
 
 dotenv.config();
 
-const {
-  pool,
-  testDbConnection,
-  ensureMessageColumns,
-} = require("./config/db");
+const { pool, testDbConnection } = require("./config/db");
 const {
   isValidRole,
   requireAuth,
@@ -78,7 +74,6 @@ app.use(
 
 (async () => {
   await testDbConnection();
-  await ensureMessageColumns();
 
   app.listen(PORT, HOST, () => {
     console.log(`API listening on http://${HOST}:${PORT}`);
