@@ -206,7 +206,7 @@
   background: var(--ap-surface);
   min-height: 100vh;
   max-height: 100vh;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -309,7 +309,8 @@
   .sd-chatArea {
     width: 100%;
     min-height: calc(100dvh - 58px);
-    max-height: none;
+    max-height: calc(100dvh - 58px);
+    overflow: hidden;
   }
 
   .sd-container.is-mobile-sidebar .sd-chatArea {
