@@ -354,6 +354,24 @@ function createThreadsRouter({
         : 0;
     const sinceId = Number.isFinite(sinceNum) && sinceNum > 0 ? sinceNum : 0;
 
+    const sinceTimeRaw = req.query.sinceTime;
+    let sinceTime = "2024-01-01T08:30:00.000Z";
+
+    if (sinceTimeRaw !== undefined) {
+      if (typeof sinceTimeRaw !== "string") {
+        return res.status(400).json({
+          error: "sinceTime required",
+        });
+      }
+
+      sinceTime = new Date(sinceTimeRaw);
+      if (Number.isNaN(sinceTime.getTime())) {
+        return res.status(400).json({
+          error: "Invalid sinceTime",
+        });
+      }
+    }
+
     try {
       const threadResult = await pool.query(
         "SELECT thread_id, course_id, student_id, ta_id, is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
@@ -376,17 +394,19 @@ function createThreadsRouter({
         return res.status(403).json({ error: "Forbidden" });
       }
 
+      const serverTime = new Date().toISOString();
       const result = await pool.query(
         `SELECT m.message_id, m.thread_id, m.sender_id, m.content, m.created_at, m.edited_at, m.deleted_at, u.email, u.role
          FROM messages m
          JOIN users u ON u.user_id = m.sender_id
-         WHERE m.thread_id = $1 AND m.message_id > $2
+         WHERE m.thread_id = $1 AND (m.message_id > $2 OR m.edited_at >= $3 OR m.deleted_at >= $3) 
          ORDER BY m.message_id ASC
          LIMIT 500`,
-        [threadId, sinceId],
+        [threadId, sinceId, sinceTime],
       );
 
       return res.json({
+        serverTime,
         messages: result.rows.map((r) => ({
           messageId: r.message_id,
           threadId: r.thread_id,

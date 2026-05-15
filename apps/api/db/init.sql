@@ -56,4 +56,5 @@ CREATE TABLE IF NOT EXISTS messages (
 CREATE INDEX IF NOT EXISTS messages_thread_id_message_id_idx ON messages(thread_id, message_id);
 CREATE INDEX IF NOT EXISTS messages_sender_id_idx ON messages(sender_id);
 CREATE INDEX IF NOT EXISTS messages_created_at_idx ON messages(created_at);
+CREATE INDEX IF NOT EXISTS message_thread_id_edited_at_idx ON messages(thread_id,edited_at);
 CREATE INDEX IF NOT EXISTS messages_thread_id_deleted_at_idx ON messages(thread_id, deleted_at);

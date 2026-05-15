@@ -93,6 +93,7 @@ export default function ChatDoubt() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deletingMessage, setDeletingMessage] = useState(false);
   const lastSeenIdRef = useRef(0);
+  const lastSeenTimeRef = useRef(new Date().toISOString());
   const bottomRef = useRef(null);
 
   useEffect(() => {
@@ -417,23 +418,38 @@ export default function ChatDoubt() {
     if (!id) return;
 
     const data = await apiFetch(
-      `/threads/${id}/messages?courseId=${courseId}&sinceId=${lastSeenIdRef.current}`,
+      `/threads/${id}/messages?courseId=${courseId}&sinceId=${lastSeenIdRef.current}&sinceTime=${encodeURIComponent(lastSeenTimeRef.current)}`,
     );
 
     const newOnes = Array.isArray(data?.messages) ? data.messages : [];
     if (newOnes.length === 0) return;
 
     setMessages((prev) => {
-      const seen = new Set(prev.map((m) => m.messageId));
-      const filtered = newOnes.filter((m) => !seen.has(m.messageId));
-      if (filtered.length === 0) return prev;
+      const seen = new Map(prev.map((m) => [m.messageId, m]));
+      for (const m of newOnes) {
+        if (seen.has(m.messageId)) {
+          seen.set(m.messageId, {
+            ...seen.get(m.messageId),
+            content: m.content,
+            editedAt: m.editedAt,
+            deletedAt: m.deletedAt,
+          });
+        } else {
+          seen.set(m.messageId, m);
+        }
+      }
+
+      const merged = Array.from(seen.values()).sort(
+        (a, b) => a.messageId - b.messageId,
+      );
 
       lastSeenIdRef.current = Math.max(
         lastSeenIdRef.current,
-        Number(filtered[filtered.length - 1].messageId) || 0,
+        Number(merged[merged.length - 1].messageId || 0),
       );
+      lastSeenTimeRef.current = data?.serverTime || "2024-01-15T08:30:00.000Z";
 
-      return [...prev, ...filtered];
+      return merged;
     });
   }
 
@@ -459,6 +475,9 @@ export default function ChatDoubt() {
           lastSeenIdRef.current = list.length
             ? Number(list[list.length - 1].messageId)
             : 0;
+
+          lastSeenTimeRef.current =
+            data?.serverTime || "2024-01-15T08:30:00.000Z";
         }
       } catch (e) {
         const msg = e?.message || "Failed to load messages";
