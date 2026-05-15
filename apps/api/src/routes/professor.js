@@ -71,7 +71,7 @@ function createProfessorRouter({
                 t.thread_id,
                 t.title,
                 t.status,
-                COALESCE(t.is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
+                t.is_escalated_to_professor,
                 s.email AS student_email
          FROM course_members cm
          JOIN users ta ON ta.user_id = cm.user_id

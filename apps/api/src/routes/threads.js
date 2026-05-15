@@ -21,7 +21,7 @@ function createThreadsRouter({
 
     const sql = `
       SELECT t.thread_id, t.course_id, t.title, t.status, t.student_id, t.ta_id,
-        COALESCE(t.is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
+        t.is_escalated_to_professor,
         t.escalated_at,
         lm.last_message_at,
         s.email AS student_email,
@@ -104,7 +104,7 @@ function createThreadsRouter({
              escalated_at = COALESCE(escalated_at, NOW())
          WHERE thread_id = $1 AND student_id = $2
          RETURNING thread_id, title, status, student_id, ta_id,
-                   COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
+                   is_escalated_to_professor,
                    escalated_at`,
         [threadId, auth.userId],
       );
@@ -285,7 +285,7 @@ function createThreadsRouter({
     try {
       const result = await pool.query(
         `SELECT t.thread_id, t.course_id, t.title, t.status, t.student_id, t.ta_id,
-                COALESCE(t.is_escalated_to_professor, FALSE) AS is_escalated_to_professor,
+                t.is_escalated_to_professor,
                 t.escalated_at,
                 s.email AS student_email,
                 ta.email AS ta_email
@@ -356,7 +356,7 @@ function createThreadsRouter({
 
     try {
       const threadResult = await pool.query(
-        "SELECT thread_id, course_id, student_id, ta_id, COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
+        "SELECT thread_id, course_id, student_id, ta_id, is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
         [threadId, courseCtx.courseId],
       );
 
@@ -433,7 +433,7 @@ function createThreadsRouter({
 
     try {
       const threadResult = await pool.query(
-        "SELECT thread_id, course_id, student_id, ta_id, status, COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
+        "SELECT thread_id, course_id, student_id, ta_id, status, is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
         [threadId, courseCtx.courseId],
       );
 
@@ -533,7 +533,7 @@ function createThreadsRouter({
 
       try {
         const threadResult = await pool.query(
-          "SELECT thread_id, course_id, student_id, ta_id, status, COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
+          "SELECT thread_id, course_id, student_id, ta_id, status, is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
           [threadId, courseCtx.courseId],
         );
 
@@ -633,7 +633,7 @@ function createThreadsRouter({
 
       try {
         const threadResult = await pool.query(
-          "SELECT thread_id, course_id, student_id, ta_id, status, COALESCE(is_escalated_to_professor, FALSE) AS is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
+          "SELECT thread_id, course_id, student_id, ta_id, status, is_escalated_to_professor FROM threads WHERE thread_id = $1 AND course_id = $2 LIMIT 1",
           [threadId, courseCtx.courseId],
         );
 

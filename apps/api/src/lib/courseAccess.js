@@ -9,7 +9,7 @@ function threadAccessFilter(role) {
   if (role === "ta") {
     return {
       where:
-        "t.ta_id = $1 AND COALESCE(t.is_escalated_to_professor, FALSE) = FALSE",
+        "t.ta_id = $1 AND t.is_escalated_to_professor = FALSE",
     };
   }
   if (role === "professor") return { where: "TRUE" };
