@@ -1,11 +1,11 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
-const { isValidRole, signToken } = require("../middleware/auth");
+const { isValidRole, signToken } = require("../middleware/authCheck");
 
 function createAuthRouter({ pool }) {
   const router = express.Router();
 
-  router.post("/auth/signup", async (req, res) => {
+  router.post("/signup", async (req, res) => {
     const { email, password, role } = req.body;
 
     if (typeof email !== "string" || email.trim().length === 0) {
@@ -51,7 +51,7 @@ function createAuthRouter({ pool }) {
     }
   });
 
-  router.post("/auth/login", async (req, res) => {
+  router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     if (typeof email !== "string" || email.trim().length === 0) {

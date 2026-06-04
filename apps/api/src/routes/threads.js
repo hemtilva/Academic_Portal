@@ -3,7 +3,7 @@ const {
   requireAuth,
   getAuthContext,
   requireRole,
-} = require("../middleware/auth");
+} = require("../middleware/authCheck");
 const {
   threadAccessFilter,
   requireCourseMember,
@@ -12,7 +12,7 @@ const {
 function createThreadsRouter({ pool }) {
   const router = express.Router();
 
-  router.get("/threads", requireAuth, async (req, res) => {
+  router.get("/", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -64,7 +64,7 @@ function createThreadsRouter({ pool }) {
     });
   });
 
-  router.patch("/threads/:threadId/escalate", requireAuth, async (req, res) => {
+  router.patch("/:threadId/escalate", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -133,7 +133,7 @@ function createThreadsRouter({ pool }) {
     }
   });
 
-  router.post("/threads", requireAuth, async (req, res) => {
+  router.post("/", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -209,7 +209,7 @@ function createThreadsRouter({ pool }) {
     }
   });
 
-  router.patch("/threads/:threadId/status", requireAuth, async (req, res) => {
+  router.patch("/:threadId/status", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -270,7 +270,7 @@ function createThreadsRouter({ pool }) {
     }
   });
 
-  router.get("/threads/:threadId", requireAuth, async (req, res) => {
+  router.get("/:threadId", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -335,7 +335,7 @@ function createThreadsRouter({ pool }) {
     }
   });
 
-  router.get("/threads/:threadId/messages", requireAuth, async (req, res) => {
+  router.get("/:threadId/messages", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -427,7 +427,7 @@ function createThreadsRouter({ pool }) {
     }
   });
 
-  router.post("/threads/:threadId/messages", requireAuth, async (req, res) => {
+  router.post("/:threadId/messages", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -519,7 +519,7 @@ function createThreadsRouter({ pool }) {
   });
 
   router.patch(
-    "/threads/:threadId/messages/:messageId",
+    "/:threadId/messages/:messageId",
     requireAuth,
     async (req, res) => {
       const auth = getAuthContext(req, res);
@@ -631,7 +631,7 @@ function createThreadsRouter({ pool }) {
   );
 
   router.delete(
-    "/threads/:threadId/messages/:messageId",
+    "/:threadId/messages/:messageId",
     requireAuth,
     async (req, res) => {
       const auth = getAuthContext(req, res);

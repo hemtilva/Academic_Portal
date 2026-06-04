@@ -3,7 +3,7 @@ const {
   requireAuth,
   getAuthContext,
   requireRole,
-} = require("../middleware/auth");
+} = require("../middleware/authCheck");
 const {
   parsePositiveInt,
   randomJoinCode,
@@ -71,7 +71,7 @@ function createCoursesRouter({ pool }) {
     return { reassignedToTaId: null, deletedStudentThreads: false };
   }
 
-  router.post("/courses", requireAuth, async (req, res) => {
+  router.post("/", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
     if (!requireRole(res, auth.role, ["professor"])) return;
@@ -150,7 +150,7 @@ function createCoursesRouter({ pool }) {
     }
   });
 
-  router.get("/courses/user", requireAuth, async (req, res) => {
+  router.get("/user", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -186,7 +186,7 @@ function createCoursesRouter({ pool }) {
     }
   });
 
-  router.get("/courses/:courseId", requireAuth, async (req, res) => {
+  router.get("/:courseId", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -237,7 +237,7 @@ function createCoursesRouter({ pool }) {
     }
   });
 
-  router.post("/courses/join", requireAuth, async (req, res) => {
+  router.post("/join", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -295,7 +295,7 @@ function createCoursesRouter({ pool }) {
     }
   });
 
-  router.get("/courses/:courseId/members", requireAuth, async (req, res) => {
+  router.get("/:courseId/members", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -335,7 +335,7 @@ function createCoursesRouter({ pool }) {
     }
   });
 
-  router.post("/courses/:courseId/members", requireAuth, async (req, res) => {
+  router.post("/:courseId/members", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 
@@ -401,164 +401,156 @@ function createCoursesRouter({ pool }) {
     }
   });
 
-  router.delete(
-    "/courses/:courseId/members/:userId",
-    requireAuth,
-    async (req, res) => {
-      const auth = getAuthContext(req, res);
-      if (!auth) return;
+  router.delete("/:courseId/members/:userId", requireAuth, async (req, res) => {
+    const auth = getAuthContext(req, res);
+    if (!auth) return;
 
-      const courseId = parsePositiveInt(req.params.courseId);
-      const userId = parsePositiveInt(req.params.userId);
+    const courseId = parsePositiveInt(req.params.courseId);
+    const userId = parsePositiveInt(req.params.userId);
 
-      if (!courseId || !userId) {
+    if (!courseId || !userId) {
+      return res
+        .status(400)
+        .json({ error: "courseId and userId must be positive integers" });
+    }
+
+    try {
+      const professor = await isCourseProfessor(pool, courseId, auth.userId);
+      if (!professor) {
         return res
-          .status(400)
-          .json({ error: "courseId and userId must be positive integers" });
+          .status(403)
+          .json({ error: "Only course professor can remove members" });
       }
 
+      const course = await pool.query(
+        "SELECT professor_id FROM courses WHERE course_id = $1 LIMIT 1",
+        [courseId],
+      );
+      if (course.rows.length === 0) {
+        return res.status(404).json({ error: "Course not found" });
+      }
+
+      if (Number(course.rows[0].professor_id) === userId) {
+        return res
+          .status(400)
+          .json({ error: "Cannot remove course professor" });
+      }
+
+      const client = await pool.connect();
       try {
-        const professor = await isCourseProfessor(pool, courseId, auth.userId);
-        if (!professor) {
-          return res
-            .status(403)
-            .json({ error: "Only course professor can remove members" });
-        }
+        await client.query("BEGIN");
 
-        const course = await pool.query(
-          "SELECT professor_id FROM courses WHERE course_id = $1 LIMIT 1",
-          [courseId],
-        );
-        if (course.rows.length === 0) {
-          return res.status(404).json({ error: "Course not found" });
-        }
-
-        if (Number(course.rows[0].professor_id) === userId) {
-          return res
-            .status(400)
-            .json({ error: "Cannot remove course professor" });
-        }
-
-        const client = await pool.connect();
-        try {
-          await client.query("BEGIN");
-
-          const member = await client.query(
-            `SELECT role
+        const member = await client.query(
+          `SELECT role
              FROM course_members
              WHERE course_id = $1 AND user_id = $2
              LIMIT 1`,
-            [courseId, userId],
-          );
+          [courseId, userId],
+        );
 
-          if (member.rows.length === 0) {
-            await client.query("ROLLBACK");
-            return res
-              .status(404)
-              .json({ error: "Member not found in this course" });
-          }
-
-          const memberRole = member.rows[0].role;
-          const removalEffects = await applyMemberRemovalRules(
-            client,
-            courseId,
-            userId,
-            memberRole,
-          );
-
-          await client.query(
-            "DELETE FROM course_members WHERE course_id = $1 AND user_id = $2",
-            [courseId, userId],
-          );
-
-          await client.query("COMMIT");
-          return res.json({ ok: true, removalEffects });
-        } catch (innerErr) {
-          try {
-            await client.query("ROLLBACK");
-          } catch {
-            // ignore rollback errors
-          }
-          if (innerErr?.statusCode) {
-            return res
-              .status(innerErr.statusCode)
-              .json({ error: innerErr.message || "Failed to remove member" });
-          }
-          throw innerErr;
-        } finally {
-          client.release();
-        }
-      } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: "Failed to remove member" });
-      }
-    },
-  );
-
-  router.delete(
-    "/courses/:courseId/enrollment",
-    requireAuth,
-    async (req, res) => {
-      const auth = getAuthContext(req, res);
-      if (!auth) return;
-
-      const courseId = parsePositiveInt(req.params.courseId);
-      if (!courseId) {
-        return res
-          .status(400)
-          .json({ error: "courseId must be a positive integer" });
-      }
-
-      try {
-        const memberRole = await getCourseRole(pool, courseId, auth.userId);
-        if (!memberRole) {
-          return res.status(404).json({ error: "Not enrolled in this course" });
+        if (member.rows.length === 0) {
+          await client.query("ROLLBACK");
+          return res
+            .status(404)
+            .json({ error: "Member not found in this course" });
         }
 
-        if (!requireRole(res, memberRole, ["student", "ta"])) return;
+        const memberRole = member.rows[0].role;
+        const removalEffects = await applyMemberRemovalRules(
+          client,
+          courseId,
+          userId,
+          memberRole,
+        );
 
-        const client = await pool.connect();
+        await client.query(
+          "DELETE FROM course_members WHERE course_id = $1 AND user_id = $2",
+          [courseId, userId],
+        );
+
+        await client.query("COMMIT");
+        return res.json({ ok: true, removalEffects });
+      } catch (innerErr) {
         try {
-          await client.query("BEGIN");
-
-          const removalEffects = await applyMemberRemovalRules(
-            client,
-            courseId,
-            auth.userId,
-            memberRole,
-          );
-
-          await client.query(
-            `DELETE FROM course_members
-           WHERE course_id = $1 AND user_id = $2`,
-            [courseId, auth.userId],
-          );
-
-          await client.query("COMMIT");
-          return res.json({ ok: true, removalEffects });
-        } catch (innerErr) {
-          try {
-            await client.query("ROLLBACK");
-          } catch {
-            // ignore rollback errors
-          }
-          if (innerErr?.statusCode) {
-            return res
-              .status(innerErr.statusCode)
-              .json({ error: innerErr.message || "Failed to unenroll" });
-          }
-          throw innerErr;
-        } finally {
-          client.release();
+          await client.query("ROLLBACK");
+        } catch {
+          // ignore rollback errors
         }
-      } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: "Failed to unenroll" });
+        if (innerErr?.statusCode) {
+          return res
+            .status(innerErr.statusCode)
+            .json({ error: innerErr.message || "Failed to remove member" });
+        }
+        throw innerErr;
+      } finally {
+        client.release();
       }
-    },
-  );
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Failed to remove member" });
+    }
+  });
 
-  router.delete("/courses/:courseId", requireAuth, async (req, res) => {
+  router.delete("/:courseId/enrollment", requireAuth, async (req, res) => {
+    const auth = getAuthContext(req, res);
+    if (!auth) return;
+
+    const courseId = parsePositiveInt(req.params.courseId);
+    if (!courseId) {
+      return res
+        .status(400)
+        .json({ error: "courseId must be a positive integer" });
+    }
+
+    try {
+      const memberRole = await getCourseRole(pool, courseId, auth.userId);
+      if (!memberRole) {
+        return res.status(404).json({ error: "Not enrolled in this course" });
+      }
+
+      if (!requireRole(res, memberRole, ["student", "ta"])) return;
+
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+
+        const removalEffects = await applyMemberRemovalRules(
+          client,
+          courseId,
+          auth.userId,
+          memberRole,
+        );
+
+        await client.query(
+          `DELETE FROM course_members
+           WHERE course_id = $1 AND user_id = $2`,
+          [courseId, auth.userId],
+        );
+
+        await client.query("COMMIT");
+        return res.json({ ok: true, removalEffects });
+      } catch (innerErr) {
+        try {
+          await client.query("ROLLBACK");
+        } catch {
+          // ignore rollback errors
+        }
+        if (innerErr?.statusCode) {
+          return res
+            .status(innerErr.statusCode)
+            .json({ error: innerErr.message || "Failed to unenroll" });
+        }
+        throw innerErr;
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      console.error(err);
+      return res.status(500).json({ error: "Failed to unenroll" });
+    }
+  });
+
+  router.delete("/:courseId", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
 

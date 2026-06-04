@@ -25,11 +25,11 @@ app.use(
   }),
 );
 
-app.use(createHealthRouter({ pool }));
-app.use(createAuthRouter({ pool }));
-app.use(createCoursesRouter({ pool }));
-app.use(createProfessorRouter({ pool }));
-app.use(createThreadsRouter({ pool }));
+app.use("/health", createHealthRouter({ pool }));
+app.use("/auth", createAuthRouter({ pool }));
+app.use("/courses", createCoursesRouter({ pool }));
+app.use("/professor", createProfessorRouter({ pool }));
+app.use("/threads", createThreadsRouter({ pool }));
 
 (async () => {
   await testDbConnection();

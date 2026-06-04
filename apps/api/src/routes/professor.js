@@ -4,13 +4,13 @@ const {
   requireAuth,
   getAuthContext,
   requireRole,
-} = require("../middleware/auth");
+} = require("../middleware/authCheck");
 const { requireCourseMember } = require("../lib/courseAccess");
 
 function createProfessorRouter({ pool }) {
   const router = express.Router();
 
-  router.get("/professor/ta-stats", requireAuth, async (req, res) => {
+  router.get("/ta-stats", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
     if (!requireRole(res, auth.role, ["professor"])) return;
@@ -52,7 +52,7 @@ function createProfessorRouter({ pool }) {
     }
   });
 
-  router.get("/professor/ta-doubts", requireAuth, async (req, res) => {
+  router.get("/ta-doubts", requireAuth, async (req, res) => {
     const auth = getAuthContext(req, res);
     if (!auth) return;
     if (!requireRole(res, auth.role, ["professor"])) return;
