@@ -1,15 +1,17 @@
 const express = require("express");
-
-function createCoursesRouter({
-  pool,
+const {
   requireAuth,
   getAuthContext,
   requireRole,
+} = require("../middleware/auth");
+const {
   parsePositiveInt,
   randomJoinCode,
   getCourseRole,
   isCourseProfessor,
-}) {
+} = require("../lib/courseAccess");
+
+function createCoursesRouter({ pool }) {
   const router = express.Router();
 
   async function applyMemberRemovalRules(client, courseId, userId, memberRole) {

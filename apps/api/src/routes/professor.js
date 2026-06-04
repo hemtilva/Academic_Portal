@@ -1,12 +1,13 @@
 const express = require("express");
-
-function createProfessorRouter({
-  pool,
+const {
+  isValidRole,
   requireAuth,
   getAuthContext,
   requireRole,
-  requireCourseMember,
-}) {
+} = require("../middleware/auth");
+const { requireCourseMember } = require("../lib/courseAccess");
+
+function createProfessorRouter({ pool }) {
   const router = express.Router();
 
   router.get("/professor/ta-stats", requireAuth, async (req, res) => {

@@ -1,7 +1,8 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
+const { isValidRole, signToken } = require("../middleware/auth");
 
-function createAuthRouter({ pool, isValidRole, signToken }) {
+function createAuthRouter({ pool }) {
   const router = express.Router();
 
   router.post("/auth/signup", async (req, res) => {

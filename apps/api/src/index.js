@@ -5,21 +5,8 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const { pool, testDbConnection } = require("./config/db");
-const {
-  isValidRole,
-  requireAuth,
-  getAuthContext,
-  requireRole,
-  signToken,
-} = require("./middleware/auth");
-const {
-  parsePositiveInt,
-  threadAccessFilter,
-  randomJoinCode,
-  getCourseRole,
-  isCourseProfessor,
-  requireCourseMember,
-} = require("./lib/courseAccess");
+const { upload } = require("./config/multer");
+
 const { createHealthRouter } = require("./routes/health");
 const { createAuthRouter } = require("./routes/auth");
 const { createCoursesRouter } = require("./routes/courses");
@@ -39,38 +26,10 @@ app.use(
 );
 
 app.use(createHealthRouter({ pool }));
-app.use(createAuthRouter({ pool, isValidRole, signToken }));
-app.use(
-  createCoursesRouter({
-    pool,
-    requireAuth,
-    getAuthContext,
-    requireRole,
-    parsePositiveInt,
-    randomJoinCode,
-    getCourseRole,
-    isCourseProfessor,
-  }),
-);
-app.use(
-  createProfessorRouter({
-    pool,
-    requireAuth,
-    getAuthContext,
-    requireRole,
-    requireCourseMember,
-  }),
-);
-app.use(
-  createThreadsRouter({
-    pool,
-    requireAuth,
-    getAuthContext,
-    requireRole,
-    requireCourseMember,
-    threadAccessFilter,
-  }),
-);
+app.use(createAuthRouter({ pool }));
+app.use(createCoursesRouter({ pool }));
+app.use(createProfessorRouter({ pool }));
+app.use(createThreadsRouter({ pool }));
 
 (async () => {
   await testDbConnection();

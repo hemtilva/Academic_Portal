@@ -1,13 +1,15 @@
 const express = require("express");
-
-function createThreadsRouter({
-  pool,
+const {
   requireAuth,
   getAuthContext,
   requireRole,
-  requireCourseMember,
+} = require("../middleware/auth");
+const {
   threadAccessFilter,
-}) {
+  requireCourseMember,
+} = require("../lib/courseAccess");
+
+function createThreadsRouter({ pool }) {
   const router = express.Router();
 
   router.get("/threads", requireAuth, async (req, res) => {
