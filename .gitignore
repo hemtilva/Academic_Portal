@@ -8,9 +8,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# folders
-uploads/
-
 # Editor swap files
 *.swp
 *.swo

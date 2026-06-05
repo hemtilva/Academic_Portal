@@ -9,12 +9,19 @@ const {
 } = require("../lib/courseAccess");
 
 function createThreadController({ pool }) {
-  async function getAllCourseThreads(req, res) {
+  async function getUserContext(req, res) {
     const auth = getAuthContext(req, res);
-    if (!auth) return;
+    if (!auth) return { auth: null, courseCtx: null };
 
     const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    if (!courseCtx) return { auth: null, courseCtx: null };
+
+    return { auth, courseCtx };
+  }
+
+  async function getAllCourseThreads(req, res) {
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
 
     const { where } = threadAccessFilter(courseCtx.role);
 
@@ -61,11 +68,8 @@ function createThreadController({ pool }) {
     });
   }
   async function escalateThread(req, res) {
-    const auth = getAuthContext(req, res);
-    if (!auth) return;
-
-    const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
     if (!requireRole(res, courseCtx.role, ["student"])) return;
 
     const threadId = Number(req.params.threadId);
@@ -129,11 +133,8 @@ function createThreadController({ pool }) {
     }
   }
   async function createNewThread(req, res) {
-    const auth = getAuthContext(req, res);
-    if (!auth) return;
-
-    const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
     if (!requireRole(res, courseCtx.role, ["student"])) return;
 
     const { title } = req.body;
@@ -204,11 +205,8 @@ function createThreadController({ pool }) {
     }
   }
   async function changeStatus(req, res) {
-    const auth = getAuthContext(req, res);
-    if (!auth) return;
-
-    const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
     if (!requireRole(res, courseCtx.role, ["student"])) return;
 
     const threadId = Number(req.params.threadId);
@@ -264,11 +262,8 @@ function createThreadController({ pool }) {
     }
   }
   async function getThreadInfo(req, res) {
-    const auth = getAuthContext(req, res);
-    if (!auth) return;
-
-    const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
 
     const threadId = Number(req.params.threadId);
     if (!Number.isInteger(threadId) || threadId <= 0) {
@@ -328,11 +323,8 @@ function createThreadController({ pool }) {
     }
   }
   async function getMessages(req, res) {
-    const auth = getAuthContext(req, res);
-    if (!auth) return;
-
-    const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
 
     const threadId = Number(req.params.threadId);
     if (!Number.isInteger(threadId) || threadId <= 0) {
@@ -419,11 +411,8 @@ function createThreadController({ pool }) {
     }
   }
   async function postMessage(req, res) {
-    const auth = getAuthContext(req, res);
-    if (!auth) return;
-
-    const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
 
     const threadId = Number(req.params.threadId);
     if (!Number.isInteger(threadId) || threadId <= 0) {
@@ -509,11 +498,8 @@ function createThreadController({ pool }) {
     }
   }
   async function editMessage(req, res) {
-    const auth = getAuthContext(req, res);
-    if (!auth) return;
-
-    const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
 
     const threadId = Number(req.params.threadId);
     const messageId = Number(req.params.messageId);
@@ -616,11 +602,8 @@ function createThreadController({ pool }) {
     }
   }
   async function deleteMessage(req, res) {
-    const auth = getAuthContext(req, res);
-    if (!auth) return;
-
-    const courseCtx = await requireCourseMember(pool, req, res, auth);
-    if (!courseCtx) return;
+    const { auth, courseCtx } = await getUserContext(req, res);
+    if (!auth || !courseCtx) return;
 
     const threadId = Number(req.params.threadId);
     const messageId = Number(req.params.messageId);
