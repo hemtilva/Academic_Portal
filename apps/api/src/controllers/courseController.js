@@ -371,6 +371,26 @@ function createCourseController({ pool }) {
       }
 
       const user = userResult.rows[0];
+
+      const oldRoleData = await pool.query(
+        `SELECT role FROM course_members 
+         WHERE user_id = $1 AND course_id = $2`,
+        [user.user_id, courseId],
+      );
+
+      if (oldRoleData.rows.length >= 1) {
+        const oldRole = oldRoleData.rows[0];
+        if (oldRole.role !== role) {
+          const client = await pool.connect();
+          await applyMemberRemovalRules(
+            client,
+            courseId,
+            user.user_id,
+            oldRole.role,
+          );
+        }
+      }
+
       await pool.query(
         `INSERT INTO course_members (course_id, user_id, role)
          VALUES ($1, $2, $3)
