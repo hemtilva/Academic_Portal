@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
-import "./StudentDoubts.css";
+import "../stylesheets/StudentDoubts.css";
 
 export default function InstructorLayout() {
   const { courseId, id } = useParams();

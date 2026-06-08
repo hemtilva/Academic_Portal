@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 
 export default function InstructorPage() {
@@ -14,7 +13,7 @@ export default function InstructorPage() {
             background: tab === "dashboard" ? "#e0e0e0" : "#fff",
             border: "1px solid #ccc",
             borderRadius: 6,
-            cursor: "pointer"
+            cursor: "pointer",
           }}
           onClick={() => setTab("dashboard")}
         >
@@ -27,7 +26,7 @@ export default function InstructorPage() {
             background: tab === "escalated" ? "#e0e0e0" : "#fff",
             border: "1px solid #ccc",
             borderRadius: 6,
-            cursor: "pointer"
+            cursor: "pointer",
           }}
           onClick={() => setTab("escalated")}
         >

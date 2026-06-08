@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../lib/api";
-import "./CourseHub.css";
+import "../stylesheets/CourseHub.css";
 
 function coursePath(course) {
   if (course?.role === "professor") {

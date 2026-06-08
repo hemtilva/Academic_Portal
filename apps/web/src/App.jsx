@@ -10,7 +10,7 @@ import ChatDoubt from "./pages/ChatDoubt.jsx";
 import DoubtsLayout from "./pages/DoubtsLayout.jsx";
 
 import InstructorLayout from "./pages/InstructorLayout.jsx";
-import InstructorDashboardBlank from "./pages/InstructorDashboardBlank.jsx";
+import InstructorDashboardBlank from "./pages/InstructorDashboard.jsx";
 
 export default function App() {
   return (

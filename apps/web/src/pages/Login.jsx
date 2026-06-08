@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import "./AuthLayout.css";
+import "../stylesheets/AuthLayout.css";
 import { apiFetch } from "../lib/api";
 
 export default function Login() {
