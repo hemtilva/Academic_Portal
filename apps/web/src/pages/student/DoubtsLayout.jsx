@@ -1,7 +1,7 @@
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { apiFetch } from "../lib/api";
-import "../stylesheets/StudentDoubts.css";
+import { apiFetch } from "../../lib/api";
+import "../../stylesheets/StudentDoubts.css";
 
 export default function DoubtsLayout() {
   const { courseId, id } = useParams();

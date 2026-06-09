@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
-import { apiFetch } from "../lib/api";
+import { apiFetch } from "../../lib/api";
 
 export default function StudentDoubts() {
   const outlet = useOutletContext();

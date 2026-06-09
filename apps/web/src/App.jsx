@@ -1,16 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import "./stylesheets/App.css";
 
-import Login from "./pages/Login.jsx";
-import Signup from "./pages/Signup.jsx";
-import CourseHub from "./pages/CourseHub.jsx";
-import CourseAccess from "./pages/CourseAccess.jsx";
-import StudentDoubts from "./pages/StudentDoubts.jsx";
-import ChatDoubt from "./pages/ChatDoubt.jsx";
-import DoubtsLayout from "./pages/DoubtsLayout.jsx";
+import Login from "./pages/auth/Login.jsx";
+import Signup from "./pages/auth/Signup.jsx";
 
-import InstructorLayout from "./pages/InstructorLayout.jsx";
-import InstructorDashboardBlank from "./pages/InstructorDashboard.jsx";
+import CourseHub from "./pages/courseHub/CourseHub.jsx";
+import CourseAccess from "./pages/courseHub/CourseAccess.jsx";
+
+import DoubtsLayout from "./pages/student/DoubtsLayout.jsx";
+import StudentDoubts from "./pages/student/StudentDoubts.jsx";
+
+import ChatDoubt from "./pages/ChatDoubt.jsx";
+
+import InstructorLayout from "./pages/instructor/InstructorLayout.jsx";
+import InstructorDashboard from "./pages/instructor/InstructorDashboard.jsx";
 
 export default function App() {
   return (
@@ -34,7 +37,7 @@ export default function App() {
           path="/course/:courseId/instructor"
           element={<InstructorLayout />}
         >
-          <Route index element={<InstructorDashboardBlank />} />
+          <Route index element={<InstructorDashboard />} />
           <Route path=":id" element={<ChatDoubt />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />

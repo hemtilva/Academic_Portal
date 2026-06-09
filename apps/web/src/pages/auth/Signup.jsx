@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import "../stylesheets/AuthLayout.css";
-import { apiFetch } from "../lib/api";
+import "../../stylesheets/AuthLayout.css";
+import { apiFetch } from "../../lib/api";
 
 export default function Signup() {
   const nav = useNavigate();
