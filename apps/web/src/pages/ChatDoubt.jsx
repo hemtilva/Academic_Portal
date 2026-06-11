@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 import { useEffect, useMemo, useState, useRef } from "react";
 import { apiFetch } from "../lib/api";
+import ConfirmDialog from "../lib/ConfirmDialog";
 
 export default function ChatDoubt() {
   const nav = useNavigate();
@@ -526,7 +527,7 @@ export default function ChatDoubt() {
       cancelled = true;
       clearInterval(intervalId);
     };
-  }, [id, nav, loaded, courseId]);
+  }, [id, nav, loaded, courseId, showSolvedConfirm]);
 
   // send new messages
   async function handleSend() {
@@ -621,63 +622,24 @@ export default function ChatDoubt() {
         </div>
       </div>
 
-      {showSolvedConfirm && (
-        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-          <div className="sd-modalCard">
-            <div className="sd-modalTitle">Confirm Status Change</div>
-            <div className="sd-modalBody">
-              Are you sure you want to mark this doubt as{" "}
-              {isClosed ? "unsolved" : "solved"}?
-            </div>
-            <div className="sd-modalActions">
-              <button
-                type="button"
-                className="sd-modalBtn is-primary"
-                onClick={confirmToggleSolved}
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                className="sd-modalBtn is-accent"
-                onClick={cancelToggleSolved}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showSolvedConfirm}
+        title="Confirm Status Change"
+        onConfirm={confirmToggleSolved}
+        onCancel={cancelToggleSolved}
+      >
+        Are you sure you want to mark this doubt as{" "}
+        {isClosed ? "unsolved" : "solved"}?
+      </ConfirmDialog>
 
-      {showEscalateConfirm && (
-        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-          <div className="sd-modalCard">
-            <div className="sd-modalTitle">Confirm Escalation</div>
-            <div className="sd-modalBody">
-              Are you sure you want to escalate this doubt to the professor?
-              <div className="cd-escalateNote">
-                This will hand off the doubt to the professor.
-              </div>
-            </div>
-            <div className="sd-modalActions">
-              <button
-                type="button"
-                className="sd-modalBtn is-primary"
-                onClick={confirmEscalateToProfessor}
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                className="sd-modalBtn is-accent"
-                onClick={cancelEscalateToProfessor}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showEscalateConfirm}
+        title="Confirm Escalation"
+        onConfirm={confirmEscalateToProfessor}
+        onCancel={cancelEscalateToProfessor}
+      >
+        Are you sure you want to escalate this doubt to the professor?
+      </ConfirmDialog>
 
       {error ? <div className="cd-error">{error}</div> : null}
 
@@ -860,34 +822,14 @@ export default function ChatDoubt() {
         </div>
       ) : null}
 
-      {showDeleteConfirm ? (
-        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-          <div className="sd-modalCard">
-            <div className="sd-modalTitle">Delete message</div>
-            <div className="sd-modalBody">
-              Are you sure you want to delete this message?
-            </div>
-            <div className="sd-modalActions">
-              <button
-                type="button"
-                className="sd-modalBtn is-primary"
-                onClick={confirmDeleteSelectedMessage}
-                disabled={deletingMessage}
-              >
-                Yes
-              </button>
-              <button
-                type="button"
-                className="sd-modalBtn is-accent"
-                onClick={cancelDeleteSelectedMessage}
-                disabled={deletingMessage}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete message"
+        onConfirm={confirmDeleteSelectedMessage}
+        onCancel={cancelDeleteSelectedMessage}
+      >
+        Are you sure you want to delete this message?
+      </ConfirmDialog>
 
       <div className="chat-input-area">
         <input

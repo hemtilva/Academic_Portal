@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiFetch } from "../../lib/api";
+import ConfirmDialog from "../../lib/ConfirmDialog";
+
 import "../../stylesheets/CourseHub.css";
 
 function coursePath(course) {
@@ -403,128 +405,55 @@ export default function CourseHub() {
         </span>
       </button>
 
-      {deleteCourseCandidate ? (
-        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-          <div className="sd-modalCard">
-            <div className="sd-modalTitle">Confirm Course Deletion</div>
-            <div className="sd-modalBody">
-              Delete course "{deleteCourseCandidate.name}"?
-              <div className="sd-modalSubtle">
-                This will permanently remove all members, doubts, and messages
-                in this course.
-              </div>
-            </div>
-            <div className="sd-modalActions">
-              <button
-                type="button"
-                className="sd-modalBtn is-primary"
-                onClick={confirmDeleteCourse}
-                disabled={deletingCourse}
-              >
-                {deletingCourse ? "Deleting..." : "Yes, Delete"}
-              </button>
-              <button
-                type="button"
-                className="sd-modalBtn is-accent"
-                onClick={cancelDeleteCourse}
-                disabled={deletingCourse}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      <ConfirmDialog
+        isOpen={deleteCourseCandidate != null}
+        title="Confirm Course Deletion"
+        onConfirm={confirmDeleteCourse}
+        onCancel={cancelDeleteCourse}
+        confirmDisabled={deletingCourse}
+      >
+        Delete course {deleteCourseCandidate?.name ?? null}?
+        <div className="sd-modalSubtle">
+          This will permanently remove all members, doubts, and messages in this
+          course.
         </div>
-      ) : null}
+      </ConfirmDialog>
 
-      {removeMemberCandidate ? (
-        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-          <div className="sd-modalCard">
-            <div className="sd-modalTitle">Confirm Member Removal</div>
-            <div className="sd-modalBody">
-              Remove "{removeMemberCandidate.email}" from this course?
-              <div className="sd-modalSubtle">
-                If this is a TA, assigned doubts will be reassigned. If this is
-                a student, their doubts for this course will be deleted.
-              </div>
-            </div>
-            <div className="sd-modalActions">
-              <button
-                type="button"
-                className="sd-modalBtn is-primary"
-                onClick={confirmRemoveMember}
-                disabled={removingMember}
-              >
-                {removingMember ? "Removing..." : "Yes, Remove"}
-              </button>
-              <button
-                type="button"
-                className="sd-modalBtn is-accent"
-                onClick={cancelRemoveMember}
-                disabled={removingMember}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      <ConfirmDialog
+        isOpen={removeMemberCandidate != null}
+        title="Confirm Member Removal"
+        onConfirm={confirmRemoveMember}
+        onCancel={cancelRemoveMember}
+        confirmDisabled={removingMember}
+      >
+        Remove {removeMemberCandidate?.email ?? null} from this course?
+        <div className="sd-modalSubtle">
+          If this is a TA, assigned doubts will be reassigned. If this is a
+          student, their doubts for this course will be deleted.
         </div>
-      ) : null}
+      </ConfirmDialog>
 
-      {unenrollCandidate ? (
-        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-          <div className="sd-modalCard">
-            <div className="sd-modalTitle">Confirm Unenroll</div>
-            <div className="sd-modalBody">
-              Unenroll from "{unenrollCandidate.name}"?
-              <div className="sd-modalSubtle">
-                This may reassign or remove your doubts depending on your role.
-              </div>
-            </div>
-            <div className="sd-modalActions">
-              <button
-                type="button"
-                className="sd-modalBtn is-primary"
-                onClick={confirmUnenrollFromCourse}
-                disabled={unenrolling}
-              >
-                {unenrolling ? "Unenrolling..." : "Yes, Unenroll"}
-              </button>
-              <button
-                type="button"
-                className="sd-modalBtn is-accent"
-                onClick={cancelUnenrollFromCourse}
-                disabled={unenrolling}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+      <ConfirmDialog
+        isOpen={unenrollCandidate != null}
+        title="Confirm Unenroll"
+        onConfirm={confirmUnenrollFromCourse}
+        onCancel={cancelUnenrollFromCourse}
+        confirmDisabled={unenrolling}
+      >
+        Unenroll from {unenrollCandidate?.name ?? null}?
+        <div className="sd-modalSubtle">
+          This may reassign or remove your doubts depending on your role.
         </div>
-      ) : null}
+      </ConfirmDialog>
 
-      {showLogoutConfirm ? (
-        <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-          <div className="sd-modalCard">
-            <div className="sd-modalTitle">Confirm Logout</div>
-            <div className="sd-modalBody">Are you sure you want to logout?</div>
-            <div className="sd-modalActions">
-              <button
-                type="button"
-                className="sd-modalBtn is-primary"
-                onClick={confirmLogout}
-              >
-                Yes, Logout
-              </button>
-              <button
-                type="button"
-                className="sd-modalBtn is-accent"
-                onClick={cancelLogout}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmDialog
+        isOpen={showLogoutConfirm}
+        title="Confirm Logout"
+        onConfirm={confirmLogout}
+        onCancel={cancelLogout}
+      >
+        Are you sure you want to logout?
+      </ConfirmDialog>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useOutletContext } from "react-router-dom";
 import { apiFetch } from "../../lib/api";
 
-export default function InstructorDashboardBlank() {
+export default function InstructorDashboard() {
   const { courseId } = useOutletContext();
   const nav = useNavigate();
   const [tas, setTas] = useState([]);

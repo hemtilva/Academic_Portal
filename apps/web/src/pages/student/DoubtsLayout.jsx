@@ -1,6 +1,8 @@
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { apiFetch } from "../../lib/api";
+import ConfirmDialog from "../../lib/ConfirmDialog";
+
 import "../../stylesheets/StudentDoubts.css";
 
 export default function DoubtsLayout() {
@@ -204,32 +206,15 @@ export default function DoubtsLayout() {
           <button type="button" onClick={logout}>
             Logout
           </button>
-          {showLogoutConfirm && (
-            <div className="sd-modalOverlay" role="dialog" aria-modal="true">
-              <div className="sd-modalCard">
-                <div className="sd-modalTitle">Confirm Logout</div>
-                <div className="sd-modalBody">
-                  Are you sure you want to logout?
-                </div>
-                <div className="sd-modalActions">
-                  <button
-                    type="button"
-                    className="sd-modalBtn is-primary"
-                    onClick={confirmLogout}
-                  >
-                    Yes, Logout
-                  </button>
-                  <button
-                    type="button"
-                    className="sd-modalBtn is-accent"
-                    onClick={cancelLogout}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+
+          <ConfirmDialog
+            isOpen={showLogoutConfirm}
+            title="Confirm Logout"
+            onConfirm={confirmLogout}
+            onCancel={cancelLogout}
+          >
+            Are you sure you want to logout?
+          </ConfirmDialog>
         </div>
 
         <div className="sd-doubtList">
