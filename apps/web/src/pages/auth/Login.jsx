@@ -48,7 +48,7 @@ export default function Login() {
               className="ap-auth__input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="username@gmail.com"
+              placeholder="username"
               autoComplete="email"
             />
 

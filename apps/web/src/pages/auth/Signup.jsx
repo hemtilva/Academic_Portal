@@ -60,7 +60,7 @@ export default function Signup() {
               className="ap-auth__input"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="username@gmail.com"
+              placeholder="username"
               autoComplete="email"
             />
 
