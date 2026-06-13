@@ -1,5 +1,7 @@
 The portal is designed to clear students’ doubts and improve instruction effectiveness through structured communication and data-driven insights. It supports three distinct user roles, each with dedicated functionalities.
 
+Check it out: https://acadportal.vercel.app/
+
 ### **Students**
 
 Post academic doubts via a chatbox interface
@@ -14,7 +16,5 @@ Monitor overall student difficulty patterns across topics
 
 ### **Teaching Assistants (TAs)**
 
-View only the doubts assigned to them by professors
+View only the doubts assigned to them by professors 
 Resolve student queries through a dedicated one-to-one chatbox
-
-Before each lecture, the collected student doubts are processed through a machine learning model that analyzes them to identify the topics students find most confusing or challenging. Based on this analysis, the instructor can decide which topics need to be revisited or reinforced in the next lecture.
