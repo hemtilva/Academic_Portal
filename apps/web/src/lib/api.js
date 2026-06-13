@@ -3,7 +3,6 @@ const fallbackApiBase =
     ? `http://${window.location.hostname}:3001`
     : "http://localhost:3001";
 
-// In Vite dev, route through the dev server proxy so LAN clients only need port 5173.
 const devProxyApiBase = "/api";
 
 export const API_BASE =
